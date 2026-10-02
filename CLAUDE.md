@@ -13,8 +13,8 @@ flexfare is a flight search front-end with two ideas at its core:
 
 ```bash
 npm install
-npm run dev:web    # front end only (landing + demo work with no env)
-npm run dev        # front end + api via `vercel dev`
+npm run dev        # front end only (landing + demo work with no env)
+npm run dev:full   # front end + api via `vercel dev` (its dev command is plain `vite`, never `vercel dev`: that recurses)
 npm test           # vitest
 npm run typecheck  # app + api
 npm run build

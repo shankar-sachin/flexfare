@@ -12,8 +12,8 @@ flexfare searches city to city (every airport in each city) across whole weeks i
 
 ```bash
 npm install
-npm run dev:web      # front end only, http://localhost:5173 (landing page + demo work with no setup)
-npm run dev          # front end + /api functions, needs the Vercel CLI (`npx vercel dev`)
+npm run dev          # front end only, http://localhost:5173 (landing page + demo work with no setup)
+npm run dev:full     # front end + /api functions via `vercel dev` (needed for sign-in and search)
 npm test             # unit + component tests
 npm run typecheck
 npm run build

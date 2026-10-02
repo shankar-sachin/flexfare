@@ -5,8 +5,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
-    "dev:web": "vite",
+    "dev": "vite",
+    "dev:full": "vercel dev",
     "build": "tsc -b && tsc -p tsconfig.api.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b && tsc -p tsconfig.api.json",
