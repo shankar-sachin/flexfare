@@ -50,7 +50,7 @@ describe('runCuration (simulated fares, Groq unavailable)', () => {
       const best = cands[0];
       const out = {
         headline: `Top pick is $${best.priceUsd}.`, summary: 'Checked many combinations.',
-        picks: [{ candidateId: best.id, fit: 93, badge: 'Best fit', warning: null, why: `About $${best.priceUsd} per adult.`, reasons: ['Matches your weeks.'], scores: { price: 90, travelTime: 80, connections: 70, weeksFit: 100 } }],
+        picks: [{ candidateId: best.id, fit: 93, why: `About $${best.priceUsd} per adult.`, reasons: ['Matches your weeks.'], scores: { price: 90, travelTime: 80, connections: 70, weeksFit: 100 } }],
       };
       return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(out) } }] }), { status: 200 });
     }));
