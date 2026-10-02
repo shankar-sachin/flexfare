@@ -1,0 +1,42 @@
+/* flexfare design tokens. Source of truth for color, type, radius, spacing. */
+:root {
+  /* Color */
+  --ink: #111317; /* primary text, dark surfaces */
+  --ink-2: #3b4048; /* secondary body text */
+  --muted: #5b6169; /* captions, labels (≥4.5:1 on white) */
+  --line: #dadde1; /* borders */
+  --line-soft: #e6e8eb; /* subtle dividers, tracks */
+  --ground: #f4f5f6; /* page background */
+  --surface: #ffffff; /* cards */
+  --on-dark-muted: #c9cdd3; /* secondary text on --ink */
+  --on-dark-line: #2a2e35;
+
+  --signal: #ffc72c; /* brand yellow: fills only, never text on white */
+  --signal-soft: #fff3c9; /* in-range / highlight fill */
+  --link: #1d4ed8;
+  --link-hover: #1e3a8a;
+  --warn-text: #8a3b00;
+  --warn-line: #f0c8a8;
+
+  /* Type */
+  --font-sans: 'Archivo', system-ui, sans-serif; /* use font-stretch 108–118% for display */
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace; /* codes, prices, week numbers */
+
+  /* Radius */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  /* Layout */
+  --container: 1240px;
+  --gutter: 32px;
+  --tap: 44px; /* minimum touch target */
+}
+
+@media (max-width: 640px) {
+  :root {
+    --gutter: 16px;
+  }
+}

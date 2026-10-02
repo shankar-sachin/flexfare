@@ -1,0 +1,38 @@
+{
+  "name": "flexfare",
+  "private": true,
+  "license": "Apache-2.0",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:full": "vercel dev",
+    "build": "tsc -b && tsc -p tsconfig.api.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b && tsc -p tsconfig.api.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.18.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.4",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "firebase-admin": "^14.5.0",
+    "jsdom": "^30.1.1",
+    "typescript": "^5.5.4",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.5"
+  }
+}

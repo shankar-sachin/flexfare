@@ -1,0 +1,15 @@
+{
+  "framework": "vite",
+  "devCommand": "vite --port $PORT",
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 60
+    }
+  }
+}
