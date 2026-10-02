@@ -37,8 +37,9 @@ export const POST = handle(async (req) => {
     throw new HttpError(502, 'UPSTREAM', 'We could not reach the fare data just now. Your search was not counted. Please try again.');
   }
 
-  if (result.routes.length === 0) {
-    // Nothing found is not the user's fault: don't count it and don't cache it.
+  if (result.routes.length === 0 || result.aiFallback) {
+    // Nothing found, or the AI step failed: not the user's fault. Don't count it, and don't cache it,
+    // so trying again gets a real AI answer instead of a stored fallback for the next 6 hours.
     await refundQuota(user.uid, ipHash);
     return json(200, { ...result, quota: { used: Math.max(0, quota.used - 1), limit: limits().user } });
   }

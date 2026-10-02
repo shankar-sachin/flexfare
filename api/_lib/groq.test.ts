@@ -40,29 +40,111 @@ describe('validateOutput', () => {
   });
 });
 
-describe('askGroq fallback', () => {
+describe('validateOutput: differences between your own picks', () => {
+  const three = scoreCandidates(
+    [cand('x', 400), cand('y', 450, { outDate: '2026-10-21' }), cand('z', 480, { outDate: '2026-10-22' })],
+    { priority: 'balance', stay: 'range', hasReturn: true },
+  );
+  it('allows the exact difference between two picked prices, but not other numbers', () => {
+    const picks = (why: string) => output([pick('y', { why }), pick('z')]);
+    expect(() => validateOutput(picks('$30 less than the other pick.'), three)).not.toThrow(); // 480 - 450
+    expect(() => validateOutput(picks('$31 less than the other pick.'), three)).toThrow(/does not appear/);
+  });
+});
+
+describe('askGroq call policy (max 2 answers, 3 requests)', () => {
+  const reply = (body: object) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(body) } }] }), { status: 200 });
+  const models = { primary: 'primary-model', fallback: 'fallback-model' };
+  const used = (f: ReturnType<typeof vi.fn>) => f.mock.calls.map((c) => JSON.parse((c[1] as RequestInit).body as string).model);
+
   beforeEach(() => {
     process.env.GROQ_API_KEY = 'test-key';
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it('returns null (so the deterministic fallback is used) when every attempt fails', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })));
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    expect(await askGroq('sys', 'user', scored)).toBeNull();
-    expect(fetch).toHaveBeenCalledTimes(3);
+  it('gives up after ONE call when Groq rejects the request outright (400)', async () => {
+    const f = vi.fn(async () => new Response('{"error":{"message":"bad schema"}}', { status: 400 }));
+    vi.stubGlobal('fetch', f);
+    expect(await askGroq('sys', 'user', scored, models)).toBeNull();
+    expect(f).toHaveBeenCalledTimes(1);
   });
 
-  it('retries once with the validation error, then succeeds', async () => {
-    const reply = (body: object) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(body) } }] }), { status: 200 });
-    const fn = vi.fn()
+  it('also stops straight away on a bad key (401)', async () => {
+    const f = vi.fn(async () => new Response('nope', { status: 401 }));
+    vi.stubGlobal('fetch', f);
+    expect(await askGroq('sys', 'user', scored, models)).toBeNull();
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it('tries the fallback model once when the primary is down, rate limited or missing', async () => {
+    for (const status of [429, 500, 503, 404]) {
+      const f = vi.fn(async () => new Response('x', { status }));
+      vi.stubGlobal('fetch', f);
+      expect(await askGroq('sys', 'user', scored, models)).toBeNull();
+      expect(used(f)).toEqual(['primary-model', 'fallback-model']);
+    }
+  });
+
+  it('uses the fallback model result when the primary is down', async () => {
+    const f = vi.fn().mockResolvedValueOnce(new Response('x', { status: 503 })).mockResolvedValueOnce(reply(output([pick('a')])));
+    vi.stubGlobal('fetch', f);
+    expect((await askGroq('sys', 'user', scored, models))?.picks[0].candidateId).toBe('a');
+    expect(f).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries the same model once, with the reason, when the answer breaks the rules', async () => {
+    const f = vi.fn().mockResolvedValueOnce(reply(output([pick('missing')]))).mockResolvedValueOnce(reply(output([pick('a')])));
+    vi.stubGlobal('fetch', f);
+    expect((await askGroq('sys', 'user', scored, models))?.picks[0].candidateId).toBe('a');
+    expect(used(f)).toEqual(['primary-model', 'primary-model']);
+    expect(String(JSON.parse((f.mock.calls[1][1] as RequestInit).body as string).messages[1].content)).toContain('rejected');
+  });
+
+  it("treats Groq's 400 json_validate_failed (the model's own bad JSON) as a bad answer: one retry with the reason", async () => {
+    const bad = () =>
+      new Response(JSON.stringify({ error: { message: "Generated JSON does not match the expected schema. Error: jsonschema: '/picks/0/scores/weeksFit' expected number, but got null", code: 'json_validate_failed' } }), { status: 400 });
+    const f = vi.fn().mockResolvedValueOnce(bad()).mockResolvedValueOnce(reply(output([pick('a')])));
+    vi.stubGlobal('fetch', f);
+    expect((await askGroq('sys', 'user', scored, models))?.picks[0].candidateId).toBe('a');
+    expect(used(f)).toEqual(['primary-model', 'primary-model']);
+    const retryPrompt = String(JSON.parse((f.mock.calls[1][1] as RequestInit).body as string).messages[1].content);
+    expect(retryPrompt).toContain('weeksFit');
+    expect(retryPrompt).toContain('never null');
+  });
+
+  it('stops after two bad answers instead of trying a third time', async () => {
+    const f = vi.fn(async () => reply(output([pick('missing')])));
+    vi.stubGlobal('fetch', f);
+    expect(await askGroq('sys', 'user', scored, models)).toBeNull();
+    expect(f).toHaveBeenCalledTimes(2);
+  });
+
+  it('after a bad answer, a rate-limited retry costs nothing and the fallback model gets the turn', async () => {
+    const f = vi.fn()
       .mockResolvedValueOnce(reply(output([pick('missing')])))
+      .mockResolvedValueOnce(new Response('{"error":{"code":"rate_limit_exceeded"}}', { status: 429 }))
       .mockResolvedValueOnce(reply(output([pick('a')])));
-    vi.stubGlobal('fetch', fn);
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const out = await askGroq('sys', 'user', scored);
-    expect(out?.picks[0].candidateId).toBe('a');
-    expect(String(JSON.parse(fn.mock.calls[1][1].body).messages[1].content)).toContain('rejected');
+    vi.stubGlobal('fetch', f);
+    expect((await askGroq('sys', 'user', scored, models))?.picks[0].candidateId).toBe('a');
+    expect(used(f)).toEqual(['primary-model', 'primary-model', 'fallback-model']);
+  });
+
+  it('treats cut-off (invalid) JSON as a bad answer, not a crash', async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { content: '{"headline": "cut off' }, finish_reason: 'length' }] }), { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    expect(await askGroq('sys', 'user', scored, models)).toBeNull();
+    expect(f).toHaveBeenCalledTimes(2);
+  });
+
+  it('asks for strict structured output with room to think', async () => {
+    const f = vi.fn(async (_url: string, _init: RequestInit) => reply(output([pick('a')])));
+    vi.stubGlobal('fetch', f);
+    await askGroq('sys', 'user', scored, { primary: 'openai/gpt-oss-120b', fallback: 'openai/gpt-oss-20b' });
+    const body = JSON.parse((f.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.response_format.json_schema.strict).toBe(true);
+    expect(body.max_completion_tokens).toBeGreaterThanOrEqual(2000); // room to think, but small enough for Groq's free tier
+    expect(body.reasoning_effort).toBe('low');
   });
 });
 

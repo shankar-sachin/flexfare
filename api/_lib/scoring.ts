@@ -32,7 +32,7 @@ const WEIGHTS: Record<Priority, { p: number; t: number; c: number; s: number }> 
 };
 const CONN = [100, 85, 65, 45];
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-export const TOP_N = 15;
+export const TOP_N = 10; // fewer candidates = smaller prompt (Groq's free tier allows ~8k tokens/minute)
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FareCandidate } from './providers/types';
-import { dedupe, scoreCandidates, stayScore } from './scoring';
+import { TOP_N, dedupe, scoreCandidates, stayScore } from './scoring';
 
 const cand = (o: Partial<FareCandidate> = {}): FareCandidate => ({
   id: Math.random().toString(36).slice(2), originAirport: 'OAK', destAirport: 'LIS', isNearby: false, nearbyTransferMinutes: 0,
@@ -57,10 +57,11 @@ describe('scoreCandidates', () => {
     expect(one.scores.stay).toBe(100);
   });
 
-  it('keeps at most 15, best first', () => {
+  it('keeps only the top candidates, best first', () => {
     const many = Array.from({ length: 30 }, (_, i) => cand({ price: 300 + i * 10, outDate: `2026-10-${String(10 + (i % 7)).padStart(2, '0')}` }));
     const out = scoreCandidates(many, prefs);
-    expect(out.length).toBeLessThanOrEqual(15);
+    expect(out.length).toBeLessThanOrEqual(TOP_N);
+    expect(TOP_N).toBe(10);
     expect(out[0].pre).toBeGreaterThanOrEqual(out[out.length - 1].pre);
   });
 });
