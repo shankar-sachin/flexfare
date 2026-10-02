@@ -33,7 +33,10 @@ Copy `.env.example` to `.env` and fill it in (never commit `.env`).
 
 **Groq**: create a key at console.groq.com and set `GROQ_API_KEY`.
 
-**Fares**: sign up at travelpayouts.com, copy your API token and marker into `TRAVELPAYOUTS_TOKEN` / `TRAVELPAYOUTS_MARKER`, and set `FARE_PROVIDER=travelpayouts`. With `FARE_PROVIDER=simulated` (the default) the server returns deterministic fake fares labelled "Sample data".
+**Fares**: set `FARE_PROVIDER` to one of:
+- `serpapi` (recommended): live Google Flights prices with real flight times, airlines and layovers. Sign up free at serpapi.com, copy your API key into `SERPAPI_KEY`. The free plan is about 100 searches a month and each search is one credit, so each flexfare search prices only the few day combinations that fit best: 3 for a regular search (+1 if there is a nearby airport such as Porto for Lisbon) and 5 for a Deep Search. Results are cached for a day and shared between users, and `SERPAPI_MONTHLY_LIMIT` (default 100) stops flexfare from ever going past your plan. The "from $X" week bars are not available with this source.
+- `travelpayouts`: free, but it only remembers prices from recent searches on Aviasales, so many routes and weeks come back empty. Needs `TRAVELPAYOUTS_TOKEN` (the marker is optional and only credits bookings to you).
+- `simulated` (default): fake fares labelled "Sample data", for development.
 
 **Email codes (Brevo, free: 300 emails/day)**:
 1. Sign up at brevo.com. Under **Senders, Domains & Dedicated IPs -> Senders**, add the address you want codes to come from (for example your own Gmail) and click the confirmation link Brevo emails you.

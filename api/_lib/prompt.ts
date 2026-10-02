@@ -9,7 +9,8 @@ Hard rules:
 - Only pick candidates by their "id". Never invent a route, airline, time or price.
 - Every dollar amount you write must come from the candidate data: a priceUsd, a deltaVsCheapestUsd, a deltaVsNonstopUsd, or the exact difference between the priceUsd of two candidates you picked. Do no other arithmetic with prices.
 - Describe stops exactly as given: stopsOut / stopsBack of 0 means nonstop in that direction, anything higher means that many stops. Never call a pick nonstop or direct unless at least one direction has 0 stops, and say which direction.
-- We do not have layover lengths, so never mention how long a layover is. Do not write badges or warnings; the app adds those.
+- stopsBack and travelTimeBack are null when the return flight is not known yet (the traveler picks it later). Then say nothing about the return leg's stops or duration.
+- Never mention how long a layover is; that is shown elsewhere. Do not write badges or warnings; the app adds those.
 - No hype, no emoji, no exclamation marks. Prices are estimates, not live availability; never promise a fare.
 - Say what the traveler gives up as well as what they gain, e.g. "$123 cheaper than the nonstop, about 3h 30m longer each way".
 - The traveler's priority and stay length matter: weigh them, don't just copy the pre-score.

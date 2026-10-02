@@ -36,7 +36,7 @@ export function RouteCard({ route, to }: { route: CuratedRoute; to: string }) {
           <span><strong>Out</strong> {shortDate(route.outDate)}</span>
           {route.backDate && <span><strong>Back</strong> {shortDate(route.backDate)}</span>}
           <span className="muted">
-            {route.duration} each way{route.nights ? ` · ${route.nights} nights` : ''}
+            {route.duration} {route.inbound || !route.backDate ? 'each way' : 'outbound'}{route.nights ? ` · ${route.nights} nights` : ''}
           </span>
         </div>
         <p style={{ fontSize: 15, color: 'var(--ink-2)' }}>{route.why}</p>

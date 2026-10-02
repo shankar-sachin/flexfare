@@ -2,33 +2,13 @@
 import type { City } from '../src/shared/types.js';
 import { requireUser } from './_lib/auth.js';
 import { HttpError, handle, json } from './_lib/http.js';
+import { loadAirports } from './_lib/airports.js';
 import { nearbyFor } from './_lib/nearby.js';
 
 interface Place {
   code: string;
   name: string;
   country_name?: string;
-}
-
-let airportsByCity: Promise<Map<string, string[]>> | null = null;
-function loadAirports(): Promise<Map<string, string[]>> {
-  airportsByCity ??= (async () => {
-    const map = new Map<string, string[]>();
-    try {
-      const res = await fetch('https://api.travelpayouts.com/data/en/airports.json', { signal: AbortSignal.timeout(10000) });
-      if (res.ok) {
-        for (const a of (await res.json()) as { code: string; city_code: string; flightable?: boolean; iata_type?: string }[]) {
-          if (!a.flightable || a.iata_type !== 'airport') continue;
-          map.set(a.city_code, [...(map.get(a.city_code) ?? []), a.code]);
-        }
-      }
-    } catch {
-      /* airports fall back to the city code */
-    }
-    if (map.size === 0) airportsByCity = null; // retry next time
-    return map;
-  })();
-  return airportsByCity;
 }
 
 const memo = new Map<string, { at: number; cities: City[] }>();

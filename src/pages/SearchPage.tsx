@@ -17,6 +17,7 @@ export function SearchPage() {
   const navigate = useNavigate();
   const quota = useQuota();
   const [fares, setFares] = useState<WeekFare[]>([]);
+  const [faresLoading, setFaresLoading] = useState(false);
 
   useEffect(() => {
     if (!quota) getMe().catch(() => undefined);
@@ -27,7 +28,11 @@ export function SearchPage() {
     let live = true;
     setFares([]);
     if (query.from.code !== query.to.code) {
-      weekFares(query.from.code, query.to.code).then((f) => live && setFares(f)).catch(() => undefined);
+      setFaresLoading(true);
+      weekFares(query.from.code, query.to.code)
+        .then((f) => live && setFares(f))
+        .catch(() => undefined)
+        .finally(() => live && setFaresLoading(false));
     }
     return () => {
       live = false;
@@ -49,6 +54,7 @@ export function SearchPage() {
           query={query}
           weeks={weeks}
           fares={fares}
+          faresLoading={faresLoading}
           onChange={setQuery}
           footer={
             <div className="stack" style={{ gap: 12, alignItems: 'flex-end' }}>

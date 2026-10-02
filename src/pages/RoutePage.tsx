@@ -118,6 +118,11 @@ export function RoutePage({ demo = false }: { demo?: boolean }) {
               <h2 id="itin-h" style={{ fontSize: 20, fontWeight: 800 }}>Itinerary</h2>
               <LegTimeline title={`Outbound · ${shortDate(outDate)}`} leg={route.outbound} />
               {route.inbound && backDate && <LegTimeline title={`Return · ${shortDate(backDate)}`} leg={route.inbound} />}
+              {!route.inbound && backDate && (
+                <p className="muted" style={{ fontSize: 15 }}>
+                  <strong style={{ color: 'var(--ink)' }}>Return · {shortDate(backDate)}.</strong> The price above is for the round trip. You choose your return flight on Google Flights.
+                </p>
+              )}
             </section>
           </div>
 
