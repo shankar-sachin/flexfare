@@ -18,6 +18,12 @@
   --warn-text: #8a3b00;
   --warn-line: #f0c8a8;
 
+  /* Password strength meter (fills only; the label stays ink) */
+  --weak: #d9480f;
+  --fair: #ffc72c;
+  --good: #4c9f4a;
+  --strong: #1f7a45;
+
   /* Type */
   --font-sans: 'Archivo', system-ui, sans-serif; /* use font-stretch 108–118% for display */
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace; /* codes, prices, week numbers */

@@ -8,7 +8,7 @@ import { useAuth } from '../lib/AuthContext';
 const q = (r: Record<string, string | number | null>) => new URLSearchParams(Object.entries(r).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]));
 
 export function AccountPage() {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState(false);
@@ -41,7 +41,7 @@ export function AccountPage() {
           <>
             <section className="card stack" style={{ gap: 8 }}>
               <span className="label">Signed in as</span>
-              <strong style={{ fontSize: 18 }}>{me.email}</strong>
+              <strong style={{ fontSize: 18 }}>{user?.displayName ? `${user.displayName} · ${me.email}` : me.email}</strong>
               <p className="muted">
                 {Math.max(0, me.limit - me.used)} of {me.limit} AI searches left today. They reset at{' '}
                 {me.resetsAt ? new Date(me.resetsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '00:00 UTC'} your time.
