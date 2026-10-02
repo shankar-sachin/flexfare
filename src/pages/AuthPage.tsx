@@ -11,6 +11,7 @@ import {
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthShell } from '../components/AuthShell';
+import { GoogleG } from '../components/Icons';
 import { auth } from '../lib/firebase';
 import { authMessage, rememberEmail } from '../lib/authErrors';
 import { isDisposableEmail } from '../shared/disposable';
@@ -94,6 +95,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
       intro={signup ? 'Free accounts get 5 AI route searches a day. No card needed.' : 'Sign in to search your own cities and weeks.'}
     >
       <button type="button" className="btn btn--outline" disabled={busy} onClick={() => void google()}>
+        <GoogleG />
         Continue with Google
       </button>
       <div className="divider">or use your email</div>
