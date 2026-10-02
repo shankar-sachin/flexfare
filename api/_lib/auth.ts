@@ -19,9 +19,11 @@ export async function requireUser(req: Request, opts: Options = {}): Promise<Aut
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
   if (!token) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in to use flexfare.');
 
+  // Outside the try: a broken service account is OUR bug (500 + log), not an expired session.
+  const admin = adminAuth();
   let decoded;
   try {
-    decoded = await adminAuth().verifyIdToken(token, true);
+    decoded = await admin.verifyIdToken(token, true);
   } catch {
     throw new HttpError(401, 'UNAUTHENTICATED', 'Your session expired. Please sign in again.');
   }
