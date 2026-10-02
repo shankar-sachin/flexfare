@@ -34,14 +34,14 @@ describe('Gate', () => {
     app('/search');
     expect(screen.getByText('sign in form')).toBeTruthy();
   });
-  it('sends unverified emails to verify, then missing phones to add-phone', () => {
+  it('sends a missing phone to add-phone first, then an unverified email to verify', () => {
     state({ emailVerified: false, phoneOnFile: false });
     app('/search');
-    expect(screen.getByText('verify email page')).toBeTruthy();
-    cleanup();
-    state({ phoneOnFile: false });
-    app('/search');
     expect(screen.getByText('add phone page')).toBeTruthy();
+    cleanup();
+    state({ emailVerified: false });
+    app('/search');
+    expect(screen.getByText('verify email page')).toBeTruthy();
   });
   it('shows a setup notice when Firebase is not configured', () => {
     state({ configured: false, user: null });
