@@ -60,7 +60,7 @@ describe('sendEmail', () => {
   it('throws when Brevo rejects', async () => {
     process.env.BREVO_API_KEY = 'k';
     process.env.EMAIL_FROM = 'hello@flexfare.test';
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('no', { status: 401 })));
-    await expect(sendEmail(mail)).rejects.toThrow(/401/);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"message":"unrecognised IP address"}', { status: 401 })));
+    await expect(sendEmail(mail)).rejects.toThrow(/401.*unrecognised IP/);
   });
 });

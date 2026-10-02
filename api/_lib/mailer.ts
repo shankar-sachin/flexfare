@@ -31,7 +31,11 @@ export async function sendEmail(mail: Mail): Promise<void> {
     }),
     signal: AbortSignal.timeout(10000),
   });
-  if (!res.ok) throw new Error(`Brevo responded ${res.status}`);
+  if (!res.ok) {
+    // Brevo's reason ("unrecognised IP", "sender not verified", ...) goes in the server log only, never to the user.
+    const detail = (await res.text().catch(() => '')).slice(0, 300);
+    throw new Error(`Brevo responded ${res.status}: ${detail}`);
+  }
 }
 
 export function verificationCodeEmail(code: string, minutes: number): Mail {
