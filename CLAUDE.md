@@ -24,7 +24,7 @@ npm run build
 
 1. **City to city, not airport to airport.** A `City` (IATA city code like SFO, NYC, LON) expands to all its airports, plus optional `nearby` arrivals reachable by ground transport (`api/_lib/nearby.ts`).
 2. **Weeks, not dates.** Users pick a leave week and a return week (ISO weeks, Mon-Sun). Every day in both weeks is searched.
-3. **Accounts are required to search.** Gate order: signed in -> email verified -> phone on file (collected, NOT verified). Signed-out users get a fixed demo at `/demo` (no API calls).
+3. **Accounts are required to search.** Gate order: signed in -> phone on file (collected, NOT verified) -> email verified. Email is verified with a 6-digit code we email through Brevo (`api/email-code/*`, rules in `api/_lib/emailCodeLogic.ts`: 10 min expiry, 5 wrong tries, 1 send/min, 5 sends/hour, only an HMAC of the code is stored). Google/magic-link accounts arrive already verified. Signed-out users get a fixed demo at `/demo` (no API calls).
 4. **Limits (server-side, one Firestore transaction):** 5 searches/user/day, 15/IP/day, 300 global/day. Same search within 6h is cached and free. Quota is refunded if our side fails or nothing is found.
 5. **The LLM never invents data.** Fares come from the provider; `scoring.ts` precomputes every comparison; `groq.ts` rejects answers with unknown ids, reused badges, or any `$` amount not in the data, retries once, then falls back to a deterministic ranking (`aiFallback`).
 6. flexfare doesn't sell tickets. It links out (`src/shared/links.ts`). Fares are estimates.
@@ -43,7 +43,7 @@ src/
   components/               Header, Guards (Gate/GuestOnly/NeedsUser), SearchPanel, CityField (autocomplete),
                             WeekPicker, DayPicker, RouteCard, FindLinks, AuthShell, ...
   pages/                    Landing, Search, Results (demo prop), Route (demo prop), Auth, FinishEmailLink,
-                            VerifyEmail, AddPhone, Account
+                            VerifyEmail (code entry), AddPhone, Account
 ```
 
 Routes: `/` `/demo` `/demo/route/:id` `/signup` `/signin` `/auth/finish` `/verify-email` `/add-phone` (open),

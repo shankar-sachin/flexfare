@@ -88,3 +88,8 @@ export interface Me extends QuotaInfo {
 export const getMe = () => authedFetch<Me>('/api/me').then((m) => (setQuota(m), m));
 export const deleteAccount = () => authedFetch<{ ok: true }>('/api/me', { method: 'DELETE' });
 export const addPhone = (phone: string) => authedFetch<{ ok: true }>('/api/add-phone', { method: 'POST', body: JSON.stringify({ phone }) });
+
+export const sendEmailCode = () =>
+  authedFetch<{ verified: boolean; email?: string; sent?: boolean; retryAfter?: number }>('/api/email-code/send', { method: 'POST' });
+export const verifyEmailCode = (code: string) =>
+  authedFetch<{ verified: true }>('/api/email-code/verify', { method: 'POST', body: JSON.stringify({ code }) });

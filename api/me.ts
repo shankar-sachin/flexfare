@@ -16,7 +16,7 @@ export const GET = handle(async (req) => {
 
 /** Deletes the account: search history, phone claim, and the sign-in itself. */
 export const DELETE = handle(async (req) => {
-  const user = await requireUser(req, { allowNoPhone: true });
+  const user = await requireUser(req, { allowNoPhone: true, allowUnverifiedEmail: true });
   const firestore = db();
   const items = firestore.collection('searches').doc(user.uid).collection('items');
   for (;;) {

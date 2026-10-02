@@ -28,15 +28,15 @@ function NotConfigured() {
   );
 }
 
-/** Signed in, email verified, phone on file. Anything missing sends the user to the right step. */
+/** Signed in, phone on file, email verified. Anything missing sends the user to the right step, in that order. */
 export function Gate({ children }: { children: ReactNode }) {
   const { configured, user, loading, emailVerified, phoneOnFile } = useAuth();
   const loc = useLocation();
   if (!configured) return <NotConfigured />;
   if (loading) return <Pending />;
   if (!user) return <Navigate to="/signin" replace state={{ from: loc.pathname + loc.search }} />;
-  if (!emailVerified) return <Navigate to="/verify-email" replace />;
   if (!phoneOnFile) return <Navigate to="/add-phone" replace />;
+  if (!emailVerified) return <Navigate to="/verify-email" replace />;
   return <>{children}</>;
 }
 

@@ -6,14 +6,20 @@ export interface AuthedUser {
   uid: string;
   email: string;
   phoneOnFile: boolean;
+  emailVerified: boolean;
 }
 
 interface Options {
-  /** Skip the phone-on-file check (only /api/add-phone does this). */
+  /** Skip the phone-on-file check (the phone step itself, the email-code step, account deletion). */
   allowNoPhone?: boolean;
+  /** Skip the verified-email check (the email-code step itself, the phone step, account deletion). */
+  allowUnverifiedEmail?: boolean;
 }
 
-/** Verifies the Firebase ID token and the sign-up gates (verified email, phone on file). */
+/**
+ * Verifies the Firebase ID token and the sign-up gates, in the order users meet them:
+ * phone number on file, then verified email. Everything else needs both.
+ */
 export async function requireUser(req: Request, opts: Options = {}): Promise<AuthedUser> {
   const header = req.headers.get('authorization') ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
@@ -28,7 +34,9 @@ export async function requireUser(req: Request, opts: Options = {}): Promise<Aut
     throw new HttpError(401, 'UNAUTHENTICATED', 'Your session expired. Please sign in again.');
   }
   if (decoded.email && isDisposableEmail(decoded.email)) throw new HttpError(403, 'EMAIL_BLOCKED', 'Please use a permanent email address.');
-  if (!decoded.email_verified) throw new HttpError(403, 'EMAIL_UNVERIFIED', 'Verify your email to continue.');
-  if (!opts.allowNoPhone && decoded.phoneOnFile !== true) throw new HttpError(403, 'PHONE_REQUIRED', 'Add a phone number to continue.');
-  return { uid: decoded.uid, email: decoded.email ?? '', phoneOnFile: decoded.phoneOnFile === true };
+  const phoneOnFile = decoded.phoneOnFile === true;
+  const emailVerified = decoded.email_verified === true;
+  if (!opts.allowNoPhone && !phoneOnFile) throw new HttpError(403, 'PHONE_REQUIRED', 'Add a phone number to continue.');
+  if (!opts.allowUnverifiedEmail && !emailVerified) throw new HttpError(403, 'EMAIL_UNVERIFIED', 'Verify your email to continue.');
+  return { uid: decoded.uid, email: decoded.email ?? '', phoneOnFile, emailVerified };
 }
