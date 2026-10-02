@@ -27,6 +27,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     cabin: 'economy',
     stay: 'range',
     priority: 'balance',
+    depth: 'regular',
   }));
   const setQuery = useCallback((patch: Partial<SearchQuery>) => setQueryState((q) => ({ ...q, ...patch })), []);
   const rememberCity = useCallback((c: City) => void cities.current.set(c.code, c), []);

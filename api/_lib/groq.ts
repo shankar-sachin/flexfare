@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Depth } from '../../src/shared/types.js';
 import type { Scored } from './scoring.js';
 
 const score = z.number().min(0).max(100);
@@ -103,17 +104,30 @@ export function validateOutput(raw: unknown, cands: Scored[]): AiOutput {
     if (!dollars.has(n)) throw new AnswerError(`The amount ${n} dollars does not appear in the candidate data. Only quote prices, the differences given to you, or the difference between two of your picks.`);
   }
 
-  // Stops: a pick may only be called nonstop/direct if at least one direction really is.
+  // Stops: claims about nonstop/direct must match the direction they are about.
   for (const p of out.picks) {
     const c = byId.get(p.candidateId)!.c;
     // "$123 cheaper than the nonstop" compares with another flight; it isn't a claim about this pick.
-    const withoutComparisons = [p.why, ...p.reasons]
+    const text = [p.why, ...p.reasons]
       .join(' ')
       .replace(/\b(?:than|vs\.?|versus|over|under|against|unlike|beats?|compared (?:to|with)|relative to|instead of)\s+(?:the |a |an |any |that )?(?:(?:only|cheapest|fastest|other|next|one) )*(?:non-?stop|direct)\b/gi, ' ');
-    const claimsNonstop = /\b(non-?stop|direct)\b/i.test(withoutComparisons);
-    if (claimsNonstop && c.stopsOut > 0 && (c.stopsBack ?? 1) > 0) {
-      throw new AnswerError(`Pick ${p.candidateId} has stops in every direction (stopsOut ${c.stopsOut}, stopsBack ${c.stopsBack ?? 'n/a'}), so it must not be described as nonstop or direct.`);
+    const out0 = c.stopsOut === 0;
+    const back0 = c.stopsBack === null || c.stopsBack === 0;
+    const bad = (why: string) => {
+      throw new AnswerError(`Pick ${p.candidateId} has stopsOut ${c.stopsOut} and stopsBack ${c.stopsBack ?? 'n/a'}, so ${why}`);
+    };
+    const NS = '(?:non-?stop|direct)';
+    if (new RegExp(`\\b${NS}\\s+(?:both ways|each way|in both directions|both directions|both legs|round[- ]?trip)`, 'i').test(text) && !(out0 && back0)) {
+      bad('it must not be described as nonstop or direct both ways.');
     }
+    if (new RegExp(`\\b${NS}\\s+(?:outbound|out\\b|departure|leg out|on the way out|going out)`, 'i').test(text) && !out0) {
+      bad('the outbound leg must not be called nonstop or direct.');
+    }
+    if (new RegExp(`\\b${NS}\\s+(?:return|inbound|back\\b|coming back|on the way back|homeward)`, 'i').test(text) && !back0) {
+      bad('the return leg must not be called nonstop or direct.');
+    }
+    // A bare "nonstop flight" claim needs at least one nonstop direction.
+    if (new RegExp(`\\b${NS}\\b`, 'i').test(text) && !out0 && !back0) bad('it must not be described as nonstop or direct.');
   }
 
   return {
@@ -134,21 +148,21 @@ export function validateOutput(raw: unknown, cands: Scored[]): AiOutput {
   };
 }
 
-async function call(model: string, system: string, user: string): Promise<unknown> {
+async function call(model: string, plan: ModelPlan, system: string, user: string): Promise<unknown> {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new GroqHttpError(401, 'GROQ_API_KEY is not set');
   const body: Record<string, unknown> = {
     model,
     temperature: 0.3,
     // Reasoning models spend part of this on thinking, so leave plenty of room for the JSON itself.
-    max_completion_tokens: 2500,
+    max_completion_tokens: plan.maxTokens,
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: user },
     ],
     response_format: { type: 'json_schema', json_schema: { name: 'curation', strict: true, schema: JSON_SCHEMA } },
   };
-  if (model.startsWith('openai/gpt-oss')) body.reasoning_effort = 'low';
+  if (model.startsWith('openai/gpt-oss')) body.reasoning_effort = plan.effort;
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -156,12 +170,18 @@ async function call(model: string, system: string, user: string): Promise<unknow
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
-    const detail = (await res.text().catch(() => '')).slice(0, 600);
-    // Groq answers 400 json_validate_failed when the MODEL's output broke the schema (e.g. a null score).
-    // That's a bad answer, worth one retry with feedback, not a broken request.
+    const detail = (await res.text().catch(() => '')).slice(0, 3000);
+    // Groq answers 400 json_validate_failed when the MODEL's output broke the schema (e.g. a null score, or
+    // JSON cut off). That's a bad answer, worth one retry with feedback, not a broken request.
     if (res.status === 400 && detail.includes('json_validate_failed')) {
-      const why = /Error: (jsonschema[^"\\]*)/.exec(detail)?.[1] ?? 'it did not match the schema';
-      throw new AnswerError(`Your JSON did not match the schema (${why.slice(0, 200)}). Every score must be a whole number from 0 to 100, never null.`);
+      let message = '';
+      try {
+        message = String((JSON.parse(detail) as { error?: { message?: string } }).error?.message ?? '');
+      } catch {
+        message = /"message":"((?:[^"\\]|\\.)*)/.exec(detail)?.[1] ?? '';
+      }
+      const why = (/Error: (.*)$/s.exec(message)?.[1] ?? message).replace(/\s+/g, ' ').slice(0, 220) || 'it did not match the schema';
+      throw new AnswerError(`Your JSON did not match the schema (${why}). Keep the answer short, make every score a whole number from 0 to 100 (never null), and return complete JSON.`);
     }
     throw new GroqHttpError(res.status, detail.slice(0, 400));
   }
@@ -175,34 +195,50 @@ async function call(model: string, system: string, user: string): Promise<unknow
   }
 }
 
-export interface CuratePlan {
+export interface ModelPlan {
   primary: string;
+  /** Only used when the primary is down, rate limited or missing, never for a bad answer. */
   fallback: string;
+  effort: 'low' | 'medium';
+  maxTokens: number;
 }
-export const defaultModels = (): CuratePlan => ({
-  // The smaller model first: cheaper and faster, and good enough to rank a short list. Both support strict JSON.
-  primary: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
-  fallback: process.env.GROQ_FALLBACK_MODEL || 'openai/gpt-oss-120b',
-});
 
 /**
- * Two attempts at most: the cheap model first, then the stronger one if the first fails.
- *  - a bad answer from the first model -> the second model gets the reason as feedback;
- *  - Groq down, rate limited (separate limit per model) or model missing -> the second model tries;
- *  - Groq rejects the request outright (400/401/403/422) -> stop, a different model won't change that.
+ * Regular searches use the small, cheap model. A Deep Search (1 per user per day) uses the large model
+ * with more candidates and room for fuller explanations. Each falls back to the other only when its own model is unavailable.
+ */
+export function modelPlan(depth: Depth): ModelPlan {
+  const regular = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
+  const deep = process.env.GROQ_DEEP_MODEL || 'openai/gpt-oss-120b';
+  return depth === 'deep'
+    ? { primary: deep, fallback: regular, effort: 'low', maxTokens: 4000 } // more room for 5 fuller explanations
+    : { primary: regular, fallback: deep, effort: 'low', maxTokens: 2500 };
+}
+
+/**
+ * Two attempts at most:
+ *  - a bad answer -> the SAME model tries once more, told what was wrong (so regular searches stay cheap);
+ *  - Groq down, rate limited (limits are per model) or model missing -> the other model tries;
+ *  - Groq rejects the request outright (400/401/403/422) -> stop, retrying can't change that.
  * Returns null when giving up; the caller then uses the deterministic ranking.
  */
-export async function askGroq(system: string, user: string, cands: Scored[], models = defaultModels()): Promise<AiOutput | null> {
-  const order = models.fallback === models.primary ? [models.primary] : [models.primary, models.fallback];
+export async function askGroq(system: string, user: string, cands: Scored[], plan: ModelPlan): Promise<AiOutput | null> {
+  let model = plan.primary;
   let feedback = '';
-  for (const [i, model] of order.entries()) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const prompt = feedback ? `${user}\n\nA previous answer was rejected: ${feedback}\nFix that and answer again.` : user;
-      return validateOutput(await call(model, system, prompt), cands);
+      const prompt = feedback ? `${user}\n\nYour previous answer was rejected: ${feedback}\nFix that and answer again.` : user;
+      return validateOutput(await call(model, plan, system, prompt), cands);
     } catch (err) {
-      console.error(`[groq] attempt ${i + 1} (${model}) failed: ${err instanceof Error ? err.message : String(err)}`);
-      if (err instanceof GroqHttpError && !(err.status === 404 || err.status === 429 || err.status >= 500)) return null;
-      if (err instanceof AnswerError) feedback = err.message;
+      console.error(`[groq] attempt ${attempt} (${model}) failed: ${err instanceof Error ? err.message : String(err)}`);
+      if (err instanceof AnswerError) {
+        feedback = err.message;
+        model = plan.primary;
+      } else if ((err instanceof GroqHttpError && ![404, 429].includes(err.status) && err.status < 500) || plan.fallback === plan.primary) {
+        return null;
+      } else {
+        model = plan.fallback;
+      }
     }
   }
   return null;

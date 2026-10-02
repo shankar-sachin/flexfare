@@ -109,7 +109,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
   return (
     <AuthShell
       title={signup ? 'Create your free account' : 'Welcome back'}
-      intro={signup ? 'Free accounts get 5 AI route searches a day. No card needed.' : 'Sign in to search your own cities and weeks.'}
+      intro={signup ? 'Free accounts get 4 regular searches and 1 deep search a day. No card needed.' : 'Sign in to search your own cities and weeks.'}
     >
       <button type="button" className="btn btn--outline" disabled={busy} onClick={() => void google()}>
         <GoogleG />

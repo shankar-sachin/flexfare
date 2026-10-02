@@ -1,9 +1,9 @@
 import type { Scored } from './scoring.js';
 import { fmtMinutes } from './scoring.js';
 import type { NearbyAirport } from './nearby.js';
-import type { Priority, StayPreference } from '../../src/shared/types.js';
+import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
 
-export const SYSTEM_PROMPT = `You are flexfare's route analyst. You are given flight candidates that were already found and scored. Choose the best 3 to 5 for this traveler and explain the trade-offs in plain, specific language.
+const BASE_PROMPT = `You are flexfare's route analyst. You are given flight candidates that were already found and scored. Choose the best 3 to 5 for this traveler and explain the trade-offs in plain, specific language.
 
 Hard rules:
 - Only pick candidates by their "id". Never invent a route, airline, time or price.
@@ -17,6 +17,12 @@ Hard rules:
 - scores has four whole numbers from 0 to 100 (price, travelTime, connections, weeksFit). Start from the subScores in the candidate data and adjust a little if you disagree. Never use null, and never go above 100.
 - headline: one sentence (max 140 chars) giving the single most useful insight. summary: 1-2 sentences (max 320 chars).
 Return only JSON matching the schema.`;
+
+const REGULAR = '\nThis is a regular search: choose 3 or 4 picks and keep every explanation to one or two short sentences.';
+const DEEP =
+  '\nThis is a Deep Search: the traveler wants a closer look. Compare all the candidates, choose 5 picks when there are that many, and use reasons to spell out the main trade-offs between the top picks (what each one gains and gives up).';
+
+export const systemPrompt = (depth: Depth) => BASE_PROMPT + (depth === 'deep' ? DEEP : REGULAR);
 
 export interface PromptInput {
   from: string;

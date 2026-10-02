@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { formatIsoWeek, parseIsoWeek, upcomingWeeks, weeksBetween } from '../../src/shared/weeks.js';
-import type { Priority, StayPreference } from '../../src/shared/types.js';
+import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
 import { HttpError } from './http.js';
 import type { NormalizedQuery } from './providers/types.js';
 
@@ -15,12 +15,14 @@ export const curateBody = z.object({
   prio: z.enum(['price', 'balance', 'speed']),
   pax: z.number().int().min(1).max(9),
   cabin: z.enum(['economy', 'premium', 'business']),
+  depth: z.enum(['regular', 'deep']).default('regular'),
 });
 
 export interface ValidQuery {
   query: NormalizedQuery;
   stay: StayPreference;
   priority: Priority;
+  depth: Depth;
   cacheKey: unknown;
 }
 
@@ -46,7 +48,9 @@ export function validateCurate(body: unknown): ValidQuery {
     query: { from: b.from, to: b.to, departWeek, returnWeek, travelers: b.pax, cabin: b.cabin },
     stay: b.stay,
     priority: b.prio,
-    // pax/cabin are in the key because the booking links embed them.
-    cacheKey: [b.from, b.to, formatIsoWeek(departWeek), returnWeek ? formatIsoWeek(returnWeek) : null, b.stay, b.prio, b.pax, b.cabin, process.env.FARE_PROVIDER ?? 'simulated'],
+    depth: b.depth,
+    // pax/cabin are in the key because the booking links embed them; depth because a deep search must
+    // never be answered from a regular search's cache (it was paid for with the day's one deep search).
+    cacheKey: [b.from, b.to, formatIsoWeek(departWeek), returnWeek ? formatIsoWeek(returnWeek) : null, b.stay, b.prio, b.pax, b.cabin, b.depth, process.env.FARE_PROVIDER ?? 'simulated'],
   };
 }

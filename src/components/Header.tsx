@@ -10,8 +10,13 @@ function QuotaPill() {
     if (!quota) getMe().catch(() => undefined);
   }, [quota]);
   if (!quota) return null;
-  const left = Math.max(0, quota.limit - quota.used);
-  return <span className="tag" title="Searches reset at 00:00 UTC">{left} of {quota.limit} searches left today</span>;
+  const regular = Math.max(0, quota.regular.limit - quota.regular.used);
+  const deep = Math.max(0, quota.deep.limit - quota.deep.used);
+  return (
+    <span className="tag" title="Searches reset at 00:00 UTC">
+      {regular} regular + {deep} deep left today
+    </span>
+  );
 }
 
 export function Header({ children, showHowItWorks = false }: { children?: ReactNode; showHowItWorks?: boolean }) {

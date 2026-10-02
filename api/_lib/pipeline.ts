@@ -3,14 +3,14 @@
 import type { CuratedRoute, CurationResult, DayFare, Leg, Week, WeekFare } from '../../src/shared/types.js';
 import { upcomingWeeks } from '../../src/shared/weeks.js';
 import { cacheGet, cacheSet } from './cache.js';
-import { askGroq, type AiPick } from './groq.js';
+import { askGroq, modelPlan, type AiPick } from './groq.js';
 import { buildLinks } from '../../src/shared/links.js';
 import { nearbyFor } from './nearby.js';
-import { SYSTEM_PROMPT, buildUserMessage } from './prompt.js';
+import { buildUserMessage, systemPrompt } from './prompt.js';
 import { getProvider } from './providers/index.js';
 import type { DayGridCell, NormalizedQuery } from './providers/types.js';
-import { fmtMinutes, scoreCandidates, type Scored } from './scoring.js';
-import type { Priority, StayPreference } from '../../src/shared/types.js';
+import { DEEP_TOP_N, TOP_N, fmtMinutes, scoreCandidates, type Scored } from './scoring.js';
+import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
 
 const stopsText = (n: number) => (n === 0 ? 'nonstop' : `${n} stop${n === 1 ? '' : 's'}`);
 const stopsLabel = (s: Scored) => {
@@ -82,12 +82,13 @@ export function fallbackPicks(cands: Scored[]): AiPick[] {
 
 export async function runCuration(
   q: NormalizedQuery,
-  prefs: { stay: StayPreference; priority: Priority },
+  prefs: { stay: StayPreference; priority: Priority; depth?: Depth },
 ): Promise<CurationResult> {
   const provider = getProvider();
   const found = await provider.searchWeeks(q);
   const hasReturn = q.returnWeek !== null;
-  const scored = scoreCandidates(found.candidates, { priority: prefs.priority, stay: prefs.stay, hasReturn });
+  const depth = prefs.depth ?? 'regular';
+  const scored = scoreCandidates(found.candidates, { priority: prefs.priority, stay: prefs.stay, hasReturn }, depth === 'deep' ? DEEP_TOP_N : TOP_N);
 
   const empty = (note: string): CurationResult => ({
     headline: 'No fares found for these weeks.',
@@ -101,12 +102,13 @@ export async function runCuration(
   if (scored.length === 0) return empty('Fares for this route are not in our data for those weeks. Check Google Flights or Skyscanner for live prices.');
 
   const ai = await askGroq(
-    SYSTEM_PROMPT,
+    systemPrompt(depth),
     buildUserMessage({
       from: q.from, to: q.to, priority: prefs.priority, stay: prefs.stay, hasReturn,
       pairsChecked: found.pairsChecked, nearby: nearbyFor(q.to), candidates: scored,
     }),
     scored,
+    modelPlan(depth),
   );
   const picks = ai?.picks ?? fallbackPicks(scored);
   const byId = new Map(scored.map((s) => [s.c.id, s]));

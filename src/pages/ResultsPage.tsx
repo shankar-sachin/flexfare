@@ -37,13 +37,13 @@ function Loading({ airports }: { airports: string }) {
   );
 }
 
-function ErrorBox({ error }: { error: Error }) {
+function ErrorBox({ error, regularHref }: { error: Error; regularHref: string }) {
   const api = error instanceof ApiError ? error : null;
-  const resets = api?.code === 'QUOTA_EXCEEDED' || api?.code === 'BUSY' ? String(api.extra.resetsAt ?? '') : '';
+  const resets = api?.code === 'QUOTA_EXCEEDED' || api?.code === 'DEEP_QUOTA_EXCEEDED' || api?.code === 'BUSY' ? String(api.extra.resetsAt ?? '') : '';
   const when = resets ? new Date(resets).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
   return (
     <div role="alert" className="form-error stack" style={{ gap: 10 }}>
-      <strong>{api?.code === 'QUOTA_EXCEEDED' ? 'No searches left today' : 'Couldn\'t curate routes'}</strong>
+      <strong>{api?.code === 'QUOTA_EXCEEDED' ? 'No searches left today' : api?.code === 'DEEP_QUOTA_EXCEEDED' ? 'Deep search used for today' : 'Couldn\'t curate routes'}</strong>
       <span>
         {error.message}
         {when && ` They reset at ${when} your time.`}
@@ -51,7 +51,8 @@ function ErrorBox({ error }: { error: Error }) {
       </span>
       <div className="row" style={{ gap: 12 }}>
         {api?.code === 'QUOTA_EXCEEDED' && <Link to="/account" className="btn btn--ink">Open my recent searches</Link>}
-        {api?.code !== 'QUOTA_EXCEEDED' && <button type="button" className="btn btn--ink" onClick={() => window.location.reload()}>Try again</button>}
+        {api?.code === 'DEEP_QUOTA_EXCEEDED' && <Link to={regularHref} className="btn btn--ink">Run it as a regular search</Link>}
+        {api?.code !== 'QUOTA_EXCEEDED' && api?.code !== 'DEEP_QUOTA_EXCEEDED' && <button type="button" className="btn btn--ink" onClick={() => window.location.reload()}>Try again</button>}
       </div>
     </div>
   );
@@ -137,7 +138,7 @@ export function ResultsPage({ demo = false }: { demo?: boolean }) {
       )}
 
       <main className="container stack" style={{ paddingBlock: '40px 80px', gap: 32 }}>
-        {error && <ErrorBox error={error} />}
+        {error && <ErrorBox error={error} regularHref={`/results?${new URLSearchParams([...url.params.entries()].map(([k, v]) => [k, k === 'depth' ? 'regular' : v]))}`} />}
         {data?.sample && !demo && <p className="form-ok" role="note"><strong>Sample data.</strong> These fares are simulated for development, not real prices.</p>}
         {data?.aiFallback && <p className="form-ok" role="note">AI summary unavailable right now. Routes are ranked by a score that weighs price, travel time, layovers and stay length.</p>}
         {data?.dataNote && <p className="form-ok" role="note">{data.dataNote}</p>}
@@ -158,6 +159,7 @@ export function ResultsPage({ demo = false }: { demo?: boolean }) {
                     <Sparkle />
                   </span>
                   <span className="mono" style={{ fontSize: 14, color: 'var(--signal)' }}>the short version</span>
+                  {data.depth === 'deep' && <span className="tag">Deep search</span>}
                 </div>
                 <h1 style={{ fontSize: 34, lineHeight: 1.1, fontWeight: 900, fontStretch: '115%', letterSpacing: '-0.02em' }}>{data.headline}</h1>
                 <p style={{ color: 'var(--on-dark-muted)' }}>{data.summary}</p>

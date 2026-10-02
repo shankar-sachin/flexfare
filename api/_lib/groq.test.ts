@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { askGroq, validateOutput } from './groq';
+import { askGroq, modelPlan, validateOutput } from './groq';
 import { decorate, fallbackPicks } from './pipeline';
 import type { FareCandidate } from './providers/types';
 import { scoreCandidates } from './scoring';
@@ -45,12 +45,27 @@ describe('validateOutput', () => {
 
   it('only lets a pick be called nonstop or direct if a direction really is', () => {
     expect(() => validateOutput(output([pick('a', { why: 'A nonstop flight that avoids layovers.' })]), scored)).toThrow(/must not be described as nonstop/);
-    expect(() => validateOutput(output([pick('a', { reasons: ['Direct to Lisbon.'] })]), scored)).toThrow(/stops in every direction/);
+    expect(() => validateOutput(output([pick('a', { reasons: ['Direct to Lisbon.'] })]), scored)).toThrow(/must not be described as nonstop or direct/);
     expect(() => validateOutput(output([pick('b', { why: 'Nonstop both ways.' })]), scored)).not.toThrow();
     // comparing with another flight is fine
     for (const why of ['$123 cheaper than the nonstop.', 'Costs 123 USD less versus the only nonstop.', 'Beats the cheapest direct option on price.']) {
       expect(() => validateOutput(output([pick('a', { why })]), scored), why).not.toThrow();
     }
+  });
+
+  it('checks nonstop claims direction by direction', () => {
+    // out: 2 stops, back: nonstop  (like OAK -> OPO)
+    const mixed = scoreCandidates([cand('m', 202, { stopsOut: 2, stopsBack: 0 })], prefs);
+    const ok = (why: string) => () => validateOutput(output([pick('m', { why })]), mixed);
+    expect(ok('Nonstop on the way back, but two stops going out.')).not.toThrow();
+    expect(ok('Direct return flight.')).not.toThrow();
+    expect(ok('Direct outbound to Porto.')).toThrow(/outbound leg must not/);
+    expect(ok('Nonstop out and back.')).toThrow(/nonstop/);
+    expect(ok('Nonstop both ways.')).toThrow(/both ways/);
+    // out: nonstop, back: 1 stop  (like SJC -> LIS)
+    const other = scoreCandidates([cand('n', 316, { stopsOut: 0, stopsBack: 1 })], prefs);
+    expect(() => validateOutput(output([pick('n', { why: 'Nonstop outbound, one stop back.' })]), other)).not.toThrow();
+    expect(() => validateOutput(output([pick('n', { why: 'Nonstop return.' })]), other)).toThrow(/return leg must not/);
   });
 
   it('allows the exact difference between two picked prices, but not other numbers', () => {
@@ -61,9 +76,9 @@ describe('validateOutput', () => {
   });
 });
 
-describe('askGroq: two attempts at most, cheap model first', () => {
+describe('askGroq: two attempts at most', () => {
   const reply = (body: object) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(body) } }] }), { status: 200 });
-  const models = { primary: 'small-model', fallback: 'big-model' };
+  const models = { primary: 'small-model', fallback: 'big-model', effort: 'low' as const, maxTokens: 2500 };
   const used = (f: ReturnType<typeof vi.fn>) => f.mock.calls.map((c) => JSON.parse((c[1] as RequestInit).body as string).model);
   const promptOf = (f: ReturnType<typeof vi.fn>, n: number) => String(JSON.parse((f.mock.calls[n][1] as RequestInit).body as string).messages[1].content);
 
@@ -98,13 +113,13 @@ describe('askGroq: two attempts at most, cheap model first', () => {
     }
   });
 
-  it('hands a bad answer to the stronger model together with the reason', async () => {
+  it('gives a bad answer one more try on the SAME model, told why (so regular searches stay cheap)', async () => {
     const f = vi.fn()
       .mockResolvedValueOnce(reply(output([pick('a', { why: 'A nonstop flight.' })])))
       .mockResolvedValueOnce(reply(output([pick('a')])));
     vi.stubGlobal('fetch', f);
     expect((await askGroq('sys', 'user', scored, models))?.picks[0].candidateId).toBe('a');
-    expect(used(f)).toEqual(['small-model', 'big-model']);
+    expect(used(f)).toEqual(['small-model', 'small-model']);
     expect(promptOf(f, 1)).toContain('rejected');
     expect(promptOf(f, 1)).toContain('nonstop');
   });
@@ -114,7 +129,7 @@ describe('askGroq: two attempts at most, cheap model first', () => {
     const f = vi.fn().mockResolvedValueOnce(bad).mockResolvedValueOnce(reply(output([pick('a')])));
     vi.stubGlobal('fetch', f);
     expect((await askGroq('sys', 'user', scored, models))?.picks[0].candidateId).toBe('a');
-    expect(used(f)).toEqual(['small-model', 'big-model']);
+    expect(used(f)).toEqual(['small-model', 'small-model']);
     expect(promptOf(f, 1)).toContain('weeksFit');
   });
 
@@ -130,17 +145,27 @@ describe('askGroq: two attempts at most, cheap model first', () => {
     expect(cut).toHaveBeenCalledTimes(2);
   });
 
-  it('makes only one call when both models are the same', async () => {
+  it('makes only one call when the model is down and there is no other model to try', async () => {
     const f = vi.fn(async () => new Response('x', { status: 503 }));
     vi.stubGlobal('fetch', f);
-    expect(await askGroq('sys', 'user', scored, { primary: 'same', fallback: 'same' })).toBeNull();
+    expect(await askGroq('sys', 'user', scored, { ...models, fallback: models.primary })).toBeNull();
     expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the plan\'s reasoning effort and output cap', async () => {
+    const f = vi.fn(async (_url: string, _init: RequestInit) => reply(output([pick('a')])));
+    vi.stubGlobal('fetch', f);
+    await askGroq('sys', 'user', scored, modelPlan('deep'));
+    await askGroq('sys', 'user', scored, modelPlan('regular'));
+    const body = (n: number) => JSON.parse((f.mock.calls[n][1] as RequestInit).body as string);
+    expect(body(0)).toMatchObject({ model: 'openai/gpt-oss-120b', reasoning_effort: 'low', max_completion_tokens: 4000 });
+    expect(body(1)).toMatchObject({ model: 'openai/gpt-oss-20b', reasoning_effort: 'low', max_completion_tokens: 2500 });
   });
 
   it('asks for strict structured output with room to think', async () => {
     const f = vi.fn(async (_url: string, _init: RequestInit) => reply(output([pick('a')])));
     vi.stubGlobal('fetch', f);
-    await askGroq('sys', 'user', scored, { primary: 'openai/gpt-oss-20b', fallback: 'openai/gpt-oss-120b' });
+    await askGroq('sys', 'user', scored, modelPlan('regular'));
     const body = JSON.parse((f.mock.calls[0][1] as RequestInit).body as string);
     expect(body.response_format.json_schema.strict).toBe(true);
     expect(body.max_completion_tokens).toBeGreaterThanOrEqual(2000);
@@ -148,6 +173,28 @@ describe('askGroq: two attempts at most, cheap model first', () => {
     const props = body.response_format.json_schema.schema.properties.picks.items.properties;
     expect(Object.keys(props)).not.toContain('badge'); // badges and warnings are computed from data, not asked of the model
     expect(Object.keys(props)).not.toContain('warning');
+  });
+});
+
+describe('modelPlan', () => {
+  const keep = { ...process.env };
+  afterEach(() => {
+    process.env = { ...keep };
+  });
+
+  it('gives regular searches the small model and deep searches the large one, each falling back to the other', () => {
+    delete process.env.GROQ_MODEL;
+    delete process.env.GROQ_DEEP_MODEL;
+    expect(modelPlan('regular')).toMatchObject({ primary: 'openai/gpt-oss-20b', fallback: 'openai/gpt-oss-120b', effort: 'low' });
+    expect(modelPlan('deep')).toMatchObject({ primary: 'openai/gpt-oss-120b', fallback: 'openai/gpt-oss-20b', maxTokens: 4000 });
+    expect(modelPlan('deep').maxTokens).toBeGreaterThan(modelPlan('regular').maxTokens);
+  });
+
+  it('can be changed from the environment', () => {
+    process.env.GROQ_MODEL = 'cheap-x';
+    process.env.GROQ_DEEP_MODEL = 'big-y';
+    expect(modelPlan('regular').primary).toBe('cheap-x');
+    expect(modelPlan('deep').primary).toBe('big-y');
   });
 });
 

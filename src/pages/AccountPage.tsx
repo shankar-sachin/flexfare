@@ -43,7 +43,8 @@ export function AccountPage() {
               <span className="label">Signed in as</span>
               <strong style={{ fontSize: 18 }}>{user?.displayName ? `${user.displayName} · ${me.email}` : me.email}</strong>
               <p className="muted">
-                {Math.max(0, me.limit - me.used)} of {me.limit} AI searches left today. They reset at{' '}
+                Today: {Math.max(0, me.regular.limit - me.regular.used)} of {me.regular.limit} regular searches and{' '}
+                {Math.max(0, me.deep.limit - me.deep.used)} of {me.deep.limit} deep {me.deep.limit === 1 ? 'search' : 'searches'} left. They reset at{' '}
                 {me.resetsAt ? new Date(me.resetsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '00:00 UTC'} your time.
               </p>
             </section>
