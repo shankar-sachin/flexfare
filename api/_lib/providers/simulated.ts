@@ -2,7 +2,7 @@
 // same query always returns the same numbers. Everything it returns is flagged `sample`.
 import { createHash } from 'node:crypto';
 import type { Week, WeekFare } from '../../../src/shared/types.js';
-import { nearbyFor } from '../nearby.js';
+import { nearbyFor } from '../../../src/shared/nearby.js';
 import type { DayGridCell, FareCandidate, FareProvider, NormalizedQuery, SearchResult } from './types.js';
 
 const AIRPORTS: Record<string, string[]> = {

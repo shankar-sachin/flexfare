@@ -1,5 +1,5 @@
 // The single seam between the UI and the backend (Vercel functions in /api).
-import type { City, CurationResult, QuotaSummary, SearchQuery, WeekFare } from '../shared/types';
+import type { CurationResult, QuotaSummary, SearchQuery, WeekFare } from '../shared/types';
 import { useSyncExternalStore } from 'react';
 import { auth } from './firebase';
 import { toSearchParams } from './queryUrl';
@@ -65,9 +65,6 @@ function toRequest(q: SearchQuery): Map<string, unknown> {
 
 export const weekFares = (from: string, to: string) =>
   authedFetch<{ fares: WeekFare[] }>(`/api/week-fares?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`).then((r) => r.fares);
-
-export const searchCities = (q: string) =>
-  authedFetch<{ cities: City[] }>(`/api/places?q=${encodeURIComponent(q)}`).then((r) => r.cities);
 
 export interface RecentSearch {
   id: string;
