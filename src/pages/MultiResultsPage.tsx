@@ -25,6 +25,7 @@ const money = (n: number) => `$${n.toLocaleString('en-US')}`;
  */
 export function MultiResultsPage({ query }: { query: SearchQuery }) {
   const legs = useMemo(() => legQueries(query), [query]);
+  const [showMore, setShowMore] = useState<Record<number, boolean>>({});
   const [states, setStates] = useState<LegState[]>(() => legs.map(() => ({ status: 'waiting' })));
   const key = legs.map((l) => toSearchParams(l).toString()).join('|');
 
@@ -112,7 +113,8 @@ export function MultiResultsPage({ query }: { query: SearchQuery }) {
 
         {legs.map((leg, i) => {
           const st = states[i];
-          const picks = st.status === 'done' ? st.data.routes : [];
+          const picks = st.status === 'done' ? st.data.routes.filter((r) => r.tier !== 'more') : [];
+          const more = st.status === 'done' ? st.data.routes.filter((r) => r.tier === 'more') : [];
           const params = toSearchParams(leg);
           return (
             <section key={i} aria-labelledby={`leg-${i}`} className="stack" style={{ gap: 16 }}>
@@ -135,6 +137,14 @@ export function MultiResultsPage({ query }: { query: SearchQuery }) {
               {st.status === 'done' && st.data.dataNote && <p className="form-ok" role="note">{st.data.dataNote}</p>}
               {st.status === 'done' && picks.length === 0 && <p className="muted">No fares found for this flight and week. Try a nearby week.</p>}
               {picks.map((r) => <RouteCard key={r.id} route={r} to={`/route/${r.id}?${params}`} />)}
+              {more.length > 0 && (
+                <>
+                  <button type="button" className="btn btn--outline" style={{ alignSelf: 'flex-start' }} aria-expanded={!!showMore[i]} onClick={() => setShowMore((m) => ({ ...m, [i]: !m[i] }))}>
+                    {showMore[i] ? 'Hide more options' : `Show ${more.length} more ${more.length === 1 ? 'option' : 'options'}`}
+                  </button>
+                  {showMore[i] && more.map((r) => <RouteCard key={r.id} route={r} to={`/route/${r.id}?${params}`} />)}
+                </>
+              )}
             </section>
           );
         })}

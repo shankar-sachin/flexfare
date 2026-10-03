@@ -4,8 +4,6 @@ import type { CuratedRoute, CurationResult, DayFare, SearchQuery, Week, WeekFare
 import { POPULAR_CITIES } from '../lib/popularCities';
 import { parseISO, weeksBetween } from '../shared/weeks';
 
-const DEMO_LINKS = { googleFlights: '#', skyscanner: '#' };
-
 export { POPULAR_CITIES as CITIES } from '../lib/popularCities';
 
 /** Deterministic pseudo-fare per week so the UI looks stable between renders. */
@@ -87,7 +85,7 @@ export function mockCuration(q: SearchQuery, weeks: Week[]): CurationResult {
         : null,
       outDayFares: outDays,
       backDayFares: backDays,
-      links: DEMO_LINKS,
+      booking: [],
     },
     {
       id: 'sfo-lis',
@@ -131,7 +129,7 @@ export function mockCuration(q: SearchQuery, weeks: Week[]): CurationResult {
         : null,
       outDayFares: outDays,
       backDayFares: backDays,
-      links: DEMO_LINKS,
+      booking: [],
     },
     {
       id: 'sjc-ewr-lis',
@@ -160,7 +158,7 @@ export function mockCuration(q: SearchQuery, weeks: Week[]): CurationResult {
       inbound: null,
       outDayFares: outDays,
       backDayFares: backDays,
-      links: DEMO_LINKS,
+      booking: [],
     },
     {
       id: 'sfo-mad-lis',
@@ -187,7 +185,7 @@ export function mockCuration(q: SearchQuery, weeks: Week[]): CurationResult {
       inbound: null,
       outDayFares: outDays,
       backDayFares: backDays,
-      links: DEMO_LINKS,
+      booking: [],
     },
     {
       id: 'oak-jfk-opo',
@@ -216,7 +214,7 @@ export function mockCuration(q: SearchQuery, weeks: Week[]): CurationResult {
       inbound: null,
       outDayFares: outDays,
       backDayFares: backDays,
-      links: DEMO_LINKS,
+      booking: [],
     },
   ];
 

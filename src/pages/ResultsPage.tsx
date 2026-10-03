@@ -73,13 +73,19 @@ function SingleResults({ demo = false }: { demo?: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demo, query?.from.code, query?.to.code, query?.departWeek.start, query?.returnWeek?.start]);
 
-  const routes = useMemo(() => {
-    const r = [...(data?.routes ?? [])];
-    if (sort === 'fit') r.sort((a, b) => b.fit - a.fit);
-    if (sort === 'price') r.sort((a, b) => a.price - b.price);
-    if (sort === 'speed') r.sort((a, b) => a.totalMinutes - b.totalMinutes);
-    return r;
+  // Top picks (written up by the AI) first, then "More options" (ranked by score). Sorting applies within each group.
+  const { picks, more } = useMemo(() => {
+    const sorted = (list: NonNullable<typeof data>['routes']) => {
+      const r = [...list];
+      if (sort === 'fit') r.sort((a, b) => b.fit - a.fit);
+      if (sort === 'price') r.sort((a, b) => a.price - b.price);
+      if (sort === 'speed') r.sort((a, b) => a.totalMinutes - b.totalMinutes);
+      return r;
+    };
+    const all = data?.routes ?? [];
+    return { picks: sorted(all.filter((r) => r.tier !== 'more')), more: sorted(all.filter((r) => r.tier === 'more')) };
   }, [data, sort]);
+  const routes = [...picks, ...more];
 
   if (!query) {
     return (
@@ -182,9 +188,9 @@ function SingleResults({ demo = false }: { demo?: boolean }) {
         <section aria-labelledby="routes-h" className="stack" style={{ gap: 16 }}>
           <div className="row" style={{ justifyContent: 'space-between', gap: 16 }}>
             <h2 id="routes-h" style={{ fontSize: 28, fontWeight: 900, fontStretch: '112%' }}>
-              {data ? (routes.length ? `${routes.length} routes worth booking` : 'No routes found') : error ? 'No routes' : 'Curating…'}
+              {data ? (picks.length ? `${picks.length} top ${picks.length === 1 ? 'pick' : 'picks'}` : 'No routes found') : error ? 'No routes' : 'Curating…'}
             </h2>
-            {routes.length > 1 && (
+            {picks.length > 1 && (
               <div role="group" aria-label="Sort routes" className="segmented">
                 {SORTS.map((s) => (
                   <button key={s.value} type="button" aria-pressed={sort === s.value} onClick={() => setSort(s.value)}>
@@ -196,7 +202,18 @@ function SingleResults({ demo = false }: { demo?: boolean }) {
           </div>
           {loading
             ? [0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 170 }} />)
-            : routes.map((r) => <RouteCard key={r.id} route={r} to={routeTo(r.id)} />)}
+            : picks.map((r) => <RouteCard key={r.id} route={r} to={routeTo(r.id)} />)}
+          {more.length > 0 && (
+            <>
+              <div className="stack" style={{ gap: 4, marginTop: 16 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 900, fontStretch: '112%' }}>{more.length} more {more.length === 1 ? 'option' : 'options'}</h2>
+                <p className="muted" style={{ fontSize: 15 }}>The rest of the flights we priced, ranked by the same price, time and fit score. The AI didn't write these up.</p>
+              </div>
+              {more.map((r) => (
+                <RouteCard key={r.id} route={r} to={routeTo(r.id)} />
+              ))}
+            </>
+          )}
           {data && routes.length === 0 && (
             <a
               className="btn btn--ink"

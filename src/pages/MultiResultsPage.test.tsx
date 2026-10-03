@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { City, CuratedRoute, CurationResult, SearchQuery } from '../shared/types';
@@ -28,7 +28,7 @@ const query: SearchQuery = {
 const route = (id: string, price: number, over: Partial<CuratedRoute> = {}): CuratedRoute => ({
   id, fit: 90, price, totalMinutes: 600, carrier: 'United', fromAirport: 'SFO', toAirport: 'LIS', via: 'nonstop', outDate: '2026-10-20', backDate: null,
   duration: '10h 00m', nights: 0, why: `Why ${id}`, reasons: ['r'], scores: [], outbound: { date: '2026-10-20', totalDuration: '10h', segments: [], layovers: [] }, inbound: null,
-  outDayFares: [], backDayFares: [], links: { googleFlights: '#', skyscanner: '#' }, ...over,
+  outDayFares: [], backDayFares: [], booking: [], ...over,
 });
 const result = (routes: CuratedRoute[], over: Partial<CurationResult> = {}): CurationResult => ({
   headline: 'h', summary: 's', combosChecked: 3, weekFares: [], routes, ...over,
@@ -112,6 +112,24 @@ describe('MultiResultsPage', () => {
     expect(screen.getByText("Couldn't search this flight.")).toBeTruthy();
     expect(screen.getByText('Not searched.')).toBeTruthy();
     expect(curate).toHaveBeenCalledTimes(1); // the second flight was never requested
+  });
+
+  it("keeps each flight's extra options behind a button, and the total counts them", async () => {
+    curate
+      .mockResolvedValueOnce(result([route('a', 700), route('a-more', 650, { tier: 'more' })]))
+      .mockResolvedValueOnce(result([route('b', 520)]));
+    setup();
+    await screen.findByText('Why b');
+    expect(screen.queryByText('Why a-more')).toBeNull(); // hidden until asked for
+    const show = screen.getByRole('button', { name: 'Show 1 more option' });
+    expect(show.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(show);
+    expect(screen.getByText('Why a-more')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Hide more options' }).getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide more options' }));
+    expect(screen.queryByText('Why a-more')).toBeNull();
+    expect(screen.getByText('$1,170 for the cheapest combination')).toBeTruthy(); // 650 (the cheaper extra) + 520
+    expect(screen.getByText(/Our top pick for each flight comes to \$1,220/)).toBeTruthy(); // 700 + 520: picks only
   });
 
   it('says so when a flight has no fares', async () => {
