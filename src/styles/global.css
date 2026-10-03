@@ -827,6 +827,7 @@ p {
   align-self: flex-start;
   color: var(--link);
   font-size: 15px;
+}
 
 /* --- Booking options (sits on the dark price card) --- */
 .booking__title {
