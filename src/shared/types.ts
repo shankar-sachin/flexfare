@@ -96,15 +96,24 @@ export interface CuratedRoute {
   inbound: Leg | null;
   outDayFares: DayFare[]; // 7 entries, Mon–Sun of departWeek
   backDayFares: DayFare[]; // 7 entries, Mon–Sun of returnWeek
-  /** Where to go find/book this flight. flexfare doesn't sell tickets. */
-  links: FindLinks;
+  /** Where to book: the airline directly first, then comparison sites. flexfare doesn't sell tickets. */
+  booking: BookingOption[];
+  /** Airlines on the itinerary, first flight's airline first (used to rebuild booking links when the day changes). */
+  carriers?: { code: string; name: string }[];
+  /** 'more' = shown under "More options", ranked by score and not written up by the AI. */
+  tier?: 'pick' | 'more';
   priceFoundAt?: string; // ISO timestamp the fare was last seen
 }
 
-export interface FindLinks {
-  googleFlights: string;
-  skyscanner: string;
-  aviasales?: string;
+export interface BookingOption {
+  id: string;
+  label: string;
+  url: string;
+  kind: 'airline' | 'site';
+  recommended?: boolean;
+  /** True when the link opens with the trip filled in. */
+  prefilled: boolean;
+  note?: string;
 }
 
 export interface CurationResult {
