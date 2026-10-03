@@ -68,6 +68,15 @@ describe('validateOutput', () => {
     expect(() => validateOutput(output([pick('n', { why: 'Nonstop return.' })]), other)).toThrow(/return leg must not/);
   });
 
+  it('cannot claim anything about a return leg that is not known yet', () => {
+    // Google Flights lists the outbound first; the return is chosen later (stopsBack null, backDate set)
+    const unknown = scoreCandidates([cand('u', 1219, { stopsOut: 0, stopsBack: null, minutesBack: null })], prefs);
+    const say = (why: string) => () => validateOutput(output([pick('u', { why })]), unknown);
+    expect(say('Nonstop outbound.')).not.toThrow();
+    expect(say('Nonstop return.')).toThrow(/return leg must not/);
+    expect(say('Nonstop both ways.')).toThrow(/both ways/);
+  });
+
   it('allows the exact difference between two picked prices, but not other numbers', () => {
     const three = scoreCandidates([cand('x', 400), cand('y', 450, { outDate: '2026-10-21' }), cand('z', 480, { outDate: '2026-10-22' })], prefs);
     const picks = (why: string) => output([pick('y', { why }), pick('z')]);
@@ -224,6 +233,17 @@ describe('decorate: badges and warnings come from the data', () => {
   it('never gives Lowest fare to a pick that is not the cheapest', () => {
     const out = decorate([ai('fast', 90), ai('mid', 80)], byId);
     expect(out.map((o) => o.badge)).toEqual(['Best fit', undefined]);
+  });
+
+  it('warns about a long layover only when the real layover time says so', () => {
+    const lay = scoreCandidates(
+      [cand('long', 960, { stopsOut: 1, stopsBack: null, longestLayoverMinutes: 420 }), cand('short', 1219, { stopsOut: 1, stopsBack: null, longestLayoverMinutes: 80, outDate: '2026-10-21' })],
+      prefs,
+    );
+    const m = new Map(lay.map((x) => [x.c.id, x]));
+    const out = Object.fromEntries(decorate([ai('long', 90), ai('short', 80)], m).map((o) => [o.pick.candidateId, o.warning]));
+    expect(out.long).toBe('Long layover (7h 00m)');
+    expect(out.short).toBeUndefined();
   });
 
   it('warns only about facts we have: ground transfers and multiple stops', () => {

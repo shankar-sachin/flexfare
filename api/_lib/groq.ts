@@ -112,12 +112,13 @@ export function validateOutput(raw: unknown, cands: Scored[]): AiOutput {
       .join(' ')
       .replace(/\b(?:than|vs\.?|versus|over|under|against|unlike|beats?|compared (?:to|with)|relative to|instead of)\s+(?:the |a |an |any |that )?(?:(?:only|cheapest|fastest|other|next|one) )*(?:non-?stop|direct)\b/gi, ' ');
     const out0 = c.stopsOut === 0;
-    const back0 = c.stopsBack === null || c.stopsBack === 0;
+    // A return leg we know nothing about (stopsBack null) can't be called nonstop either.
+    const back0 = c.stopsBack === 0;
     const bad = (why: string) => {
       throw new AnswerError(`Pick ${p.candidateId} has stopsOut ${c.stopsOut} and stopsBack ${c.stopsBack ?? 'n/a'}, so ${why}`);
     };
     const NS = '(?:non-?stop|direct)';
-    if (new RegExp(`\\b${NS}\\s+(?:both ways|each way|in both directions|both directions|both legs|round[- ]?trip)`, 'i').test(text) && !(out0 && back0)) {
+    if (new RegExp(`\\b${NS}\\s+(?:both ways|each way|in both directions|both directions|both legs|round[- ]?trip)`, 'i').test(text) && !(out0 && (back0 || c.backDate === null))) {
       bad('it must not be described as nonstop or direct both ways.');
     }
     if (new RegExp(`\\b${NS}\\s+(?:outbound|out\\b|departure|leg out|on the way out|going out)`, 'i').test(text) && !out0) {

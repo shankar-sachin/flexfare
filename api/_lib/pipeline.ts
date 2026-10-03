@@ -54,9 +54,11 @@ export function decorate(picks: AiPick[], byId: Map<string, Scored>) {
         give('Best fit', i === 0) ?? give('Fastest', s.facts.isFastest) ?? give('Lowest fare', s.facts.isCheapest) ?? give('Nearby arrival', s.c.isNearby);
       const warning = s.c.isNearby
         ? `+ ${fmtMinutes(s.c.nearbyTransferMinutes)} transfer`
-        : s.c.stopsOut >= 2 || (s.c.stopsBack ?? 0) >= 2
-          ? 'Two or more stops'
-          : undefined;
+        : (s.c.longestLayoverMinutes ?? 0) >= 240
+          ? `Long layover (${fmtMinutes(s.c.longestLayoverMinutes!)})`
+          : s.c.stopsOut >= 2 || (s.c.stopsBack ?? 0) >= 2
+            ? 'Two or more stops'
+            : undefined;
       return { pick, badge, warning };
     });
 }
@@ -85,9 +87,9 @@ export async function runCuration(
   prefs: { stay: StayPreference; priority: Priority; depth?: Depth },
 ): Promise<CurationResult> {
   const provider = getProvider();
-  const found = await provider.searchWeeks(q);
-  const hasReturn = q.returnWeek !== null;
   const depth = prefs.depth ?? 'regular';
+  const found = await provider.searchWeeks({ ...q, stay: prefs.stay, depth });
+  const hasReturn = q.returnWeek !== null;
   const scored = scoreCandidates(found.candidates, { priority: prefs.priority, stay: prefs.stay, hasReturn }, depth === 'deep' ? DEEP_TOP_N : TOP_N);
 
   const empty = (note: string): CurationResult => ({
@@ -116,8 +118,8 @@ export async function runCuration(
   const routes = decorate(picks, byId).map<CuratedRoute>(({ pick: p, badge, warning }) => {
     const s = byId.get(p.candidateId)!;
     const c = s.c;
-    const leg = (date: string, minutes: number, stops: number | null, departAt?: string): Leg => ({
-      date, totalDuration: fmtMinutes(minutes), stops: stops ?? undefined, departAt, segments: [], layovers: [],
+    const leg = (date: string, minutes: number, stops: number | null, extra: Partial<Leg> = {}): Leg => ({
+      date, totalDuration: fmtMinutes(minutes), stops: stops ?? undefined, segments: [], layovers: [], ...extra,
     });
     return {
       id: c.id,
@@ -142,7 +144,7 @@ export async function runCuration(
         { label: 'Connections', value: p.scores.connections },
         { label: 'Fits your weeks', value: p.scores.weeksFit },
       ],
-      outbound: leg(c.outDate, c.minutesOut, c.stopsOut, c.departAt),
+      outbound: leg(c.outDate, c.minutesOut, c.stopsOut, { departAt: c.departAt, segments: c.outSegments ?? [], layovers: c.outLayovers ?? [] }),
       inbound: c.backDate && c.minutesBack !== null ? leg(c.backDate, c.minutesBack, c.stopsBack) : null,
       outDayFares: dayFares(q.departWeek, found.grid, (g) => g.outDate),
       backDayFares: dayFares(q.returnWeek, found.grid, (g) => g.backDate),

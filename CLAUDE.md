@@ -51,7 +51,7 @@ Routes: `/` `/demo` `/demo/route/:id` `/signup` `/signin` `/auth/finish` `/verif
 
 ## Known gaps
 
-- `api/_lib/providers/travelpayouts.ts` was written from the docs and has not been run against a live token. Check real responses and add fixtures in `providers/__fixtures__/`.
+- Fare sources (`api/_lib/providers/`): `serpapi.ts` (live Google Flights; 1 credit per search, prices ONE day combination per search so `pairs.ts` picks the 3 (5 deep) best-fitting combinations; 24h shared cache in Firestore `serpFares`; monthly credit cap in `serpCredits.ts`; return-leg details are not known, so `stopsBack`/`minutesBack` are null and the UI sends people to Google Flights to pick the return), `travelpayouts.ts` (verified against the real API: works, but its cache is too thin for week searches: ~1 fare for SFO-LIS across two months), `simulated.ts`. The serpapi provider is tested against a SerpApi-shaped fixture, not yet against a real key.
 - The phone number is a speed bump only (fake numbers get through). Real protection is the email check plus per-IP and global limits.
 - Watchlist and price alerts are not built. Day-picker deltas are across all flights seen between the two cities, not per route.
 - No end-to-end test against a real Firebase project; the API handlers are covered through their `_lib` pieces.

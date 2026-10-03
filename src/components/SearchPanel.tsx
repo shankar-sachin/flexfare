@@ -23,6 +23,7 @@ interface Props {
   query: SearchQuery;
   weeks: Week[];
   fares: WeekFare[];
+  faresLoading?: boolean;
   /** Omit for the read-only preview on the landing page. */
   onChange?: (patch: Partial<SearchQuery>) => void;
   /** Footer: the call-to-action and any usage note. */
@@ -30,12 +31,11 @@ interface Props {
 }
 
 /** The whole search form. Interactive on /search, locked on the signed-out landing page. */
-export function SearchPanel({ query, weeks, fares, onChange, footer }: Props) {
+export function SearchPanel({ query, weeks, fares, faresLoading, onChange, footer }: Props) {
   const readOnly = !onChange;
   const depIdx = weeks.findIndex((w) => w.start === query.departWeek.start);
   const retIdx = query.returnWeek ? weeks.findIndex((w) => w.start === query.returnWeek!.start) : null;
   const span = query.returnWeek ? weeksBetween(query.departWeek, query.returnWeek) : 0;
-  const combos = query.returnWeek ? 49 : 7;
   const airports = query.from.airports.length + query.to.airports.length + (query.to.nearby?.length ?? 0);
 
   return (
@@ -64,12 +64,13 @@ export function SearchPanel({ query, weeks, fares, onChange, footer }: Props) {
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 16 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, fontStretch: '110%' }}>Which weeks could you go?</h2>
           <p className="muted" style={{ fontSize: 15 }}>
-            Tap a week to leave, then a week to come back. Bars show the lowest fare we've seen that week.
+            Tap a week to leave, then a week to come back. Where we have fare history, bars show the lowest fare seen that week.
           </p>
         </div>
         <WeekPicker
           weeks={weeks}
           fares={fares}
+          loading={faresLoading}
           depart={depIdx}
           ret={retIdx}
           disabled={readOnly}
@@ -95,7 +96,7 @@ export function SearchPanel({ query, weeks, fares, onChange, footer }: Props) {
 
       <div className="row" style={{ justifyContent: 'space-between', gap: 20, paddingTop: 24, borderTop: '1px solid var(--line-soft)' }}>
         <p className="muted" style={{ maxWidth: 560 }}>
-          We'll check <strong style={{ color: 'var(--ink)' }}>{combos} date combinations</strong> across {airports} airports,
+          We'll price the best-fitting day combinations across <strong style={{ color: 'var(--ink)' }}>{airports} airports</strong>,
           then show you the handful worth booking.
         </p>
         {footer}
