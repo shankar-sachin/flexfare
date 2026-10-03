@@ -4,11 +4,13 @@ import type { CuratedRoute, CurationResult, DayFare, Leg, Week, WeekFare } from 
 import { upcomingWeeks } from '../../src/shared/weeks.js';
 import { cacheGet, cacheSet } from './cache.js';
 import { askGroq, modelPlan, type AiPick } from './groq.js';
-import { buildLinks } from '../../src/shared/links.js';
+import { carrierCode } from '../../src/shared/airlines.js';
+import { buildBookingOptions, type Carrier } from '../../src/shared/booking.js';
 import { nearbyFor } from '../../src/shared/nearby.js';
 import { buildUserMessage, systemPrompt } from './prompt.js';
 import { getProvider } from './providers/index.js';
 import type { DayGridCell, NormalizedQuery } from './providers/types.js';
+import type { FareCandidate } from './providers/types.js';
 import { DEEP_TOP_N, TOP_N, fmtMinutes, scoreCandidates, type Scored } from './scoring.js';
 import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
 
@@ -63,24 +65,41 @@ export function decorate(picks: AiPick[], byId: Map<string, Scored>) {
     });
 }
 
-/** Used when the AI step fails: top 5 by pre-score with templated text built from real numbers. */
-export function fallbackPicks(cands: Scored[]): AiPick[] {
-  return cands.slice(0, 5).map((s) => {
-    const reasons = [
-      s.facts.isCheapest ? 'Lowest fare found for your weeks.' : `$${s.facts.deltaVsCheapest} more than the cheapest fare found.`,
-      `${stopsLabel(s)}, about ${fmtMinutes(s.c.minutesOut)} each way.`,
-    ];
-    if (s.nights) reasons.push(`${s.nights} nights away.`);
-    if (s.c.isNearby) reasons.push(`Land at ${s.c.destAirport} and add about ${fmtMinutes(s.c.nearbyTransferMinutes)} on the ground.`);
-    return {
-      candidateId: s.c.id,
-      fit: s.pre,
-      why: `${s.weekday}, ${stopsLabel(s)}, $${s.c.price} per adult.`,
-      reasons,
-      scores: { price: s.scores.price, travelTime: s.scores.time, connections: s.scores.conn, weeksFit: s.scores.stay },
-    };
-  });
+/** Plain-language text built only from real numbers. Used for "More options" and when the AI step fails. */
+export function templatePick(s: Scored): AiPick {
+  const reasons = [
+    s.facts.isCheapest ? 'Lowest fare found for your weeks.' : `$${s.facts.deltaVsCheapest} more than the cheapest fare found.`,
+    `${stopsLabel(s)}, about ${fmtMinutes(s.c.minutesOut)} each way.`,
+  ];
+  if (s.nights) reasons.push(`${s.nights} nights away.`);
+  if (s.c.isNearby) reasons.push(`Land at ${s.c.destAirport} and add about ${fmtMinutes(s.c.nearbyTransferMinutes)} on the ground.`);
+  return {
+    candidateId: s.c.id,
+    fit: s.pre,
+    why: `${s.weekday}, ${stopsLabel(s)}, $${s.c.price} per adult.`,
+    reasons,
+    scores: { price: s.scores.price, travelTime: s.scores.time, connections: s.scores.conn, weeksFit: s.scores.stay },
+  };
 }
+
+/** Used when the AI step fails: top 5 by pre-score with templated text. */
+export const fallbackPicks = (cands: Scored[]): AiPick[] => cands.slice(0, 5).map(templatePick);
+
+/** Airlines on the itinerary, the first flight's airline first. */
+export function carriersOf(c: FareCandidate): Carrier[] {
+  const found = new Map<string, Carrier>();
+  for (const seg of c.outSegments ?? []) {
+    const code = carrierCode(seg.flight);
+    if (code && !found.has(code)) found.set(code, { code, name: seg.carrier });
+  }
+  const first = carrierCode(c.flightNumber);
+  if (found.size === 0 && first) found.set(first, { code: first, name: c.airline.split(' + ')[0] });
+  return [...found.values()];
+}
+
+/** How many flights to show beyond the AI's picks, and how many the AI itself is asked to look at. */
+const MORE_SHOWN = { regular: 10, deep: 15 } as const;
+const DISPLAY_POOL = { regular: 20, deep: 28 } as const;
 
 export async function runCuration(
   q: NormalizedQuery,
@@ -90,7 +109,9 @@ export async function runCuration(
   const depth = prefs.depth ?? 'regular';
   const found = await provider.searchWeeks({ ...q, stay: prefs.stay, depth });
   const hasReturn = q.returnWeek !== null;
-  const scored = scoreCandidates(found.candidates, { priority: prefs.priority, stay: prefs.stay, hasReturn }, depth === 'deep' ? DEEP_TOP_N : TOP_N);
+  // Score a wider pool for display; the AI analyses only the best few (Groq's free tier is small).
+  const all = scoreCandidates(found.candidates, { priority: prefs.priority, stay: prefs.stay, hasReturn }, DISPLAY_POOL[depth]);
+  const scored = all.slice(0, depth === 'deep' ? DEEP_TOP_N : TOP_N);
 
   const empty = (note: string): CurationResult => ({
     headline: 'No fares found for these weeks.',
@@ -101,7 +122,7 @@ export async function runCuration(
     weekFares: [],
     routes: [],
   });
-  if (scored.length === 0) return empty('Fares for this route are not in our data for those weeks. Check Google Flights or Skyscanner for live prices.');
+  if (all.length === 0) return empty('Fares for this route are not in our data for those weeks. Check Google Flights or Skyscanner for live prices.');
 
   const ai = await askGroq(
     systemPrompt(depth),
@@ -113,14 +134,15 @@ export async function runCuration(
     modelPlan(depth),
   );
   const picks = ai?.picks ?? fallbackPicks(scored);
-  const byId = new Map(scored.map((s) => [s.c.id, s]));
+  const byId = new Map(all.map((s) => [s.c.id, s]));
 
-  const routes = decorate(picks, byId).map<CuratedRoute>(({ pick: p, badge, warning }) => {
+  const toRoute = (p: AiPick, badge: CuratedRoute['badge'], warning: string | undefined, tier: 'pick' | 'more'): CuratedRoute => {
     const s = byId.get(p.candidateId)!;
     const c = s.c;
     const leg = (date: string, minutes: number, stops: number | null, extra: Partial<Leg> = {}): Leg => ({
       date, totalDuration: fmtMinutes(minutes), stops: stops ?? undefined, segments: [], layovers: [], ...extra,
     });
+    const carriers = carriersOf(c);
     return {
       id: c.id,
       fit: p.fit,
@@ -148,13 +170,30 @@ export async function runCuration(
       inbound: c.backDate && c.minutesBack !== null ? leg(c.backDate, c.minutesBack, c.stopsBack) : null,
       outDayFares: dayFares(q.departWeek, found.grid, (g) => g.outDate),
       backDayFares: dayFares(q.returnWeek, found.grid, (g) => g.backDate),
-      links: buildLinks({
-        from: c.originAirport, to: c.destAirport, outDate: c.outDate, backDate: c.backDate,
-        travelers: q.travelers, cabin: q.cabin, aviasalesPath: c.aviasalesPath, marker: process.env.TRAVELPAYOUTS_MARKER,
+      carriers,
+      booking: buildBookingOptions({
+        from: c.originAirport, to: c.destAirport, outDate: c.outDate, backDate: c.backDate, travelers: q.travelers, cabin: q.cabin, carriers,
+        aviasalesUrl: c.aviasalesPath ? `https://www.aviasales.com${c.aviasalesPath}${process.env.TRAVELPAYOUTS_MARKER ? `${c.aviasalesPath.includes('?') ? '&' : '?'}marker=${encodeURIComponent(process.env.TRAVELPAYOUTS_MARKER)}` : ''}` : undefined,
       }),
       priceFoundAt: c.foundAt,
+      tier,
     };
-  });
+  };
+
+  const decorated = decorate(picks, byId);
+  const routes = decorated.map((d) => toRoute(d.pick, d.badge, d.warning, 'pick'));
+
+  // More options: everything else we priced, ranked by score, with plain templated text (no AI write-up).
+  const taken = new Set(routes.flatMap((r) => (r.badge ? [r.badge] : [])));
+  const pickedIds = new Set(picks.map((p) => p.candidateId));
+  for (const s of all.filter((x) => !pickedIds.has(x.c.id)).slice(0, MORE_SHOWN[depth])) {
+    const badge = (['Fastest', 'Lowest fare', 'Nearby arrival'] as const).find(
+      (b) => !taken.has(b) && (b === 'Fastest' ? s.facts.isFastest : b === 'Lowest fare' ? s.facts.isCheapest : s.c.isNearby),
+    );
+    if (badge) taken.add(badge);
+    const d = decorate([templatePick(s)], byId)[0];
+    routes.push(toRoute(d.pick, badge, d.warning, 'more'));
+  }
 
   return {
     headline: ai?.headline ?? `Best match: ${routes[0].fromAirport} to ${routes[0].toAirport}, ${routes[0].via}, $${routes[0].price} per adult.`,
