@@ -1,0 +1,41 @@
+name: Bug report
+description: Something isn't working as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. If this is a **security** problem, please don't post it here: use the private form linked on the previous page.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: If it's a search, include the cities, weeks and trip type (or paste the results page URL).
+    validations:
+      required: false
+  - type: input
+    id: where
+    attributes:
+      label: Where did you see it?
+      placeholder: flexfare.vercel.app, a preview link, or running locally
+    validations:
+      required: false
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: Safari on iPhone, Chrome on a Mac, ...
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots help a lot. Please don't paste keys, tokens or passwords.

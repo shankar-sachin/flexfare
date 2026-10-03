@@ -71,4 +71,8 @@ With no key set, codes are printed in the `vercel dev` terminal instead of email
 - The AI only ranks and explains candidates. Prices, dates and airlines always come from the fare provider, and any dollar amount in the AI's text is checked against the real data before it is shown.
 - See `CLAUDE.md` for the architecture and design rules.
 
+## Contributing
+
+Guides and architecture notes are in the [wiki](https://github.com/shankar-sachin/flexfare/wiki) (source in `docs/wiki/`). Make your own branch, open a pull request, and I'll review it. The full steps are in [CONTRIBUTING.md](CONTRIBUTING.md). To report a security problem privately, see [SECURITY.md](SECURITY.md). Everyone taking part is expected to follow the [code of conduct](CODE_OF_CONDUCT.md).
+
 Licensed under the Apache License 2.0. See `LICENSE`.

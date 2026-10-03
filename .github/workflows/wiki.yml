@@ -1,0 +1,42 @@
+name: Sync wiki
+
+# Publishes docs/wiki/ to the GitHub wiki whenever those pages change on main.
+# The wiki repository only exists after the first page is created once in the
+# GitHub UI (Wiki tab, "Create the first page"); until then this job skips.
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/wiki/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          if ! git clone "https://x-access-token:${TOKEN}@github.com/${REPO}.wiki.git" wiki 2>/dev/null; then
+            echo "The wiki doesn't exist yet. Create its first page in the GitHub UI, then re-run this workflow."
+            exit 0
+          fi
+          find wiki -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp docs/wiki/*.md wiki/
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "Wiki already up to date."; exit 0; fi
+          git commit -m "Sync wiki from docs/wiki"
+          git push

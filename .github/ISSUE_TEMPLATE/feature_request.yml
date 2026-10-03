@@ -1,0 +1,24 @@
+name: Idea or feature request
+description: Suggest something flexfare could do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the problem or the trip you couldn't plan, rather than a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: Your idea, if you have one. Sketches and examples are welcome.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today instead?
+    validations:
+      required: false
