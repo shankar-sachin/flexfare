@@ -1,6 +1,6 @@
 import type { Scored } from './scoring.js';
 import { fmtMinutes } from './scoring.js';
-import type { NearbyAirport } from './nearby.js';
+import type { NearbyAirport } from '../../src/shared/nearby.js';
 import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
 
 const BASE_PROMPT = `You are flexfare's route analyst. You are given flight candidates that were already found and scored. Choose the best 3 to 5 for this traveler and explain the trade-offs in plain, specific language.

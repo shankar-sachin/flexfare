@@ -829,6 +829,13 @@ p {
   font-size: 15px;
 }
 
+.combo-mark {
+  background: var(--signal-soft);
+  color: inherit;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--signal-soft);
+}
+
 /* --- Booking options (sits on the dark price card) --- */
 .booking__title {
   font-size: 18px;
