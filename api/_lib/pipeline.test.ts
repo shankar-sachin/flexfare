@@ -20,10 +20,10 @@ describe('runCuration (simulated fares, Groq unavailable)', () => {
     expect(r.aiFallback).toBe(true);
     expect(r.sample).toBe(true);
     expect(r.routes.length).toBeGreaterThan(0);
-    expect(r.routes.length).toBeLessThanOrEqual(5);
+    expect(r.routes.filter((x) => x.tier === 'pick').length).toBeLessThanOrEqual(5);
     for (const route of r.routes) {
       expect(route.price).toBeGreaterThan(0);
-      expect(route.links.googleFlights).toContain('google.com/travel/flights');
+      expect(route.booking.find((b) => b.id === 'google-flights')?.url).toContain('google.com/travel/flights');
       expect(route.outDate >= '2026-10-19' && route.outDate <= '2026-10-25').toBe(true);
       expect(route.inbound).not.toBeNull();
       expect(route.outDayFares.length).toBeGreaterThan(0);
@@ -85,7 +85,9 @@ describe('runCuration (simulated fares, Groq unavailable)', () => {
     const r = await runCuration(q(), { stay: 'range', priority: 'balance' });
     vi.unstubAllGlobals();
     expect(r.aiFallback).toBe(false);
-    expect(r.routes).toHaveLength(1);
+    const picks = r.routes.filter((x) => x.tier === 'pick');
+    expect(picks).toHaveLength(1); // the AI chose one
+    expect(r.routes.length).toBeGreaterThan(1); // the rest follow as More options
     expect(r.routes[0].id).toBe(seen.ids[0]);
     expect(r.routes[0].fit).toBe(93);
     expect(r.headline).toContain('Top pick');

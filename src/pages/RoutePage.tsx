@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { demoQuery } from '../demo/demoResult';
 import { DayPicker } from '../components/DayPicker';
-import { FindLinks } from '../components/FindLinks';
+import { BookingOptions } from '../components/BookingOptions';
 import { Header } from '../components/Header';
 import { Check } from '../components/Icons';
 import { LegTimeline } from '../components/Itinerary';
 import { useSearch } from '../lib/SearchContext';
 import { useCuration } from '../lib/useCuration';
 import { useUrlQuery } from '../lib/useUrlQuery';
-import { buildLinks } from '../shared/links';
+import { buildBookingOptions } from '../shared/booking';
 import { parseISO, shortDate, timeAgo } from '../shared/weeks';
 
 const viaText = (via: string) => (via === 'nonstop' ? 'nonstop' : via.includes('· ') ? `via ${via.split('· ')[1]}` : via);
@@ -39,14 +39,16 @@ export function RoutePage({ demo = false }: { demo?: boolean }) {
   const backDate = route?.backDate ? (backDay?.date ?? route.backDate) : null;
   const changedDays = !!route && (outDate !== route.outDate || backDate !== route.backDate);
 
-  // Links follow the day you pick. The saved Aviasales deep link only fits the original dates.
-  const links = useMemo(() => {
+  // Booking links follow the day you pick. The saved Aviasales link only fits the original dates.
+  const booking = useMemo(() => {
     if (!route || !query) return null;
-    if (!changedDays) return route.links;
-    return buildLinks({ from: route.fromAirport, to: route.toAirport, outDate, backDate, travelers: query.travelers, cabin: query.cabin });
+    if (!changedDays) return route.booking;
+    return buildBookingOptions({
+      from: route.fromAirport, to: route.toAirport, outDate, backDate, travelers: query.travelers, cabin: query.cabin, carriers: route.carriers,
+    });
   }, [route, query, changedDays, outDate, backDate]);
 
-  if (!query || loading || !route || !links) {
+  if (!query || loading || !route || !booking) {
     return (
       <>
         <Header />
@@ -143,9 +145,9 @@ export function RoutePage({ demo = false }: { demo?: boolean }) {
                 {shortDate(outDate)}
                 {backDate && `  →  ${shortDate(backDate)} · ${nights} nights`}
               </span>
-              <FindLinks links={links} demo={demo} />
+              <BookingOptions options={booking} demo={demo} />
               <span style={{ fontSize: 13, color: '#9ea4ad' }}>
-                flexfare doesn't sell tickets. {route.priceFoundAt ? `Fare seen ${timeAgo(route.priceFoundAt)}. ` : ''}The airline sets the final price.
+                flexfare doesn't sell tickets: you finish booking on the site you choose. {route.priceFoundAt ? `Fare seen ${timeAgo(route.priceFoundAt)}. ` : ''}The airline sets the final price.
               </span>
             </section>
 
