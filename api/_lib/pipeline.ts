@@ -3,14 +3,14 @@
 import type { CuratedRoute, CurationResult, DayFare, Leg, Week, WeekFare } from '../../src/shared/types.js';
 import { upcomingWeeks } from '../../src/shared/weeks.js';
 import { cacheGet, cacheSet } from './cache.js';
-import { askGroq, type AiPick } from './groq.js';
+import { askGroq, modelPlan, type AiPick } from './groq.js';
 import { buildLinks } from '../../src/shared/links.js';
 import { nearbyFor } from './nearby.js';
-import { SYSTEM_PROMPT, buildUserMessage } from './prompt.js';
+import { buildUserMessage, systemPrompt } from './prompt.js';
 import { getProvider } from './providers/index.js';
 import type { DayGridCell, NormalizedQuery } from './providers/types.js';
-import { fmtMinutes, scoreCandidates, type Scored } from './scoring.js';
-import type { Priority, StayPreference } from '../../src/shared/types.js';
+import { DEEP_TOP_N, TOP_N, fmtMinutes, scoreCandidates, type Scored } from './scoring.js';
+import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
 
 const stopsText = (n: number) => (n === 0 ? 'nonstop' : `${n} stop${n === 1 ? '' : 's'}`);
 const stopsLabel = (s: Scored) => {
@@ -38,17 +38,32 @@ function dayFares(week: Week | null, grid: DayGridCell[], pick: (c: DayGridCell)
   return out;
 }
 
-/** Used when the AI step fails: top 5 by pre-score, badges from facts, templated reasons. */
+/**
+ * Badges and warnings come from the data, never from the model: a small model will happily call a
+ * 2-stop flight "nonstop" or pin "Lowest fare" on the wrong row. Best fit goes to the top pick; the
+ * other badges only to a pick that really is the fastest / cheapest / a nearby arrival.
+ */
+export function decorate(picks: AiPick[], byId: Map<string, Scored>) {
+  const taken = new Set<string>();
+  const give = (b: NonNullable<CuratedRoute['badge']>, ok: boolean) => (ok && !taken.has(b) ? (taken.add(b), b) : undefined);
+  return [...picks]
+    .sort((a, b) => b.fit - a.fit)
+    .map((pick, i) => {
+      const s = byId.get(pick.candidateId)!;
+      const badge =
+        give('Best fit', i === 0) ?? give('Fastest', s.facts.isFastest) ?? give('Lowest fare', s.facts.isCheapest) ?? give('Nearby arrival', s.c.isNearby);
+      const warning = s.c.isNearby
+        ? `+ ${fmtMinutes(s.c.nearbyTransferMinutes)} transfer`
+        : s.c.stopsOut >= 2 || (s.c.stopsBack ?? 0) >= 2
+          ? 'Two or more stops'
+          : undefined;
+      return { pick, badge, warning };
+    });
+}
+
+/** Used when the AI step fails: top 5 by pre-score with templated text built from real numbers. */
 export function fallbackPicks(cands: Scored[]): AiPick[] {
-  const used = new Set<string>();
-  const claim = (b: AiPick['badge']) => (b && !used.has(b) ? (used.add(b), b) : null);
-  return cands.slice(0, 5).map((s, i) => {
-    const badge =
-      (i === 0 && claim('Best fit')) ||
-      (s.facts.isFastest && claim('Fastest')) ||
-      (s.facts.isCheapest && claim('Lowest fare')) ||
-      (s.c.isNearby && claim('Nearby arrival')) ||
-      null;
+  return cands.slice(0, 5).map((s) => {
     const reasons = [
       s.facts.isCheapest ? 'Lowest fare found for your weeks.' : `$${s.facts.deltaVsCheapest} more than the cheapest fare found.`,
       `${stopsLabel(s)}, about ${fmtMinutes(s.c.minutesOut)} each way.`,
@@ -58,8 +73,6 @@ export function fallbackPicks(cands: Scored[]): AiPick[] {
     return {
       candidateId: s.c.id,
       fit: s.pre,
-      badge,
-      warning: s.c.isNearby ? `+ ${fmtMinutes(s.c.nearbyTransferMinutes)} transfer` : s.c.stopsOut >= 2 ? 'Two or more stops' : null,
       why: `${s.weekday}, ${stopsLabel(s)}, $${s.c.price} per adult.`,
       reasons,
       scores: { price: s.scores.price, travelTime: s.scores.time, connections: s.scores.conn, weeksFit: s.scores.stay },
@@ -69,12 +82,13 @@ export function fallbackPicks(cands: Scored[]): AiPick[] {
 
 export async function runCuration(
   q: NormalizedQuery,
-  prefs: { stay: StayPreference; priority: Priority },
+  prefs: { stay: StayPreference; priority: Priority; depth?: Depth },
 ): Promise<CurationResult> {
   const provider = getProvider();
   const found = await provider.searchWeeks(q);
   const hasReturn = q.returnWeek !== null;
-  const scored = scoreCandidates(found.candidates, { priority: prefs.priority, stay: prefs.stay, hasReturn });
+  const depth = prefs.depth ?? 'regular';
+  const scored = scoreCandidates(found.candidates, { priority: prefs.priority, stay: prefs.stay, hasReturn }, depth === 'deep' ? DEEP_TOP_N : TOP_N);
 
   const empty = (note: string): CurationResult => ({
     headline: 'No fares found for these weeks.',
@@ -88,17 +102,18 @@ export async function runCuration(
   if (scored.length === 0) return empty('Fares for this route are not in our data for those weeks. Check Google Flights or Skyscanner for live prices.');
 
   const ai = await askGroq(
-    SYSTEM_PROMPT,
+    systemPrompt(depth),
     buildUserMessage({
       from: q.from, to: q.to, priority: prefs.priority, stay: prefs.stay, hasReturn,
       pairsChecked: found.pairsChecked, nearby: nearbyFor(q.to), candidates: scored,
     }),
     scored,
+    modelPlan(depth),
   );
   const picks = ai?.picks ?? fallbackPicks(scored);
   const byId = new Map(scored.map((s) => [s.c.id, s]));
 
-  const routes = picks.map<CuratedRoute>((p) => {
+  const routes = decorate(picks, byId).map<CuratedRoute>(({ pick: p, badge, warning }) => {
     const s = byId.get(p.candidateId)!;
     const c = s.c;
     const leg = (date: string, minutes: number, stops: number | null, departAt?: string): Leg => ({
@@ -117,8 +132,8 @@ export async function runCuration(
       backDate: c.backDate,
       duration: fmtMinutes(c.minutesOut),
       nights: s.nights,
-      badge: p.badge ?? undefined,
-      warning: p.warning ?? undefined,
+      badge,
+      warning,
       why: p.why,
       reasons: p.reasons,
       scores: [

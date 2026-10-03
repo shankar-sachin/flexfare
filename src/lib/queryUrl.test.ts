@@ -8,7 +8,7 @@ const lis: City = { code: 'LIS', name: 'Lisbon', airports: ['LIS'] };
 const lookup = (c: string) => [sfo, lis].find((x) => x.code === c);
 const base = (): SearchQuery => ({
   from: sfo, to: lis, departWeek: parseIsoWeek('2026-W43')!, returnWeek: parseIsoWeek('2026-W45')!,
-  travelers: 2, cabin: 'premium', stay: 'range', priority: 'speed',
+  travelers: 2, cabin: 'premium', stay: 'range', priority: 'speed', depth: 'deep',
 });
 
 describe('search url', () => {
@@ -24,6 +24,12 @@ describe('search url', () => {
     expect(parseSearchParams(p, lookup)?.returnWeek).toBeNull();
   });
 
+  it('treats a missing depth (older links) as a regular search', () => {
+    const p = toSearchParams(base());
+    p.delete('depth');
+    expect(parseSearchParams(p, lookup)?.depth).toBe('regular');
+  });
+
   it('rejects invalid searches', () => {
     const p = () => toSearchParams(base());
     const bad = (mutate: (p: URLSearchParams) => void) => {
@@ -37,6 +43,7 @@ describe('search url', () => {
     expect(bad((x) => x.set('back', '2027-W20'))).toBeNull(); // more than 8 weeks later
     expect(bad((x) => x.set('pax', '12'))).toBeNull();
     expect(bad((x) => x.set('cabin', 'luxury'))).toBeNull();
+    expect(bad((x) => x.set('depth', 'ultra'))).toBeNull();
     expect(bad((x) => x.set('out', 'nope'))).toBeNull();
   });
 });

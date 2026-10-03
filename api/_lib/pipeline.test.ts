@@ -34,6 +34,34 @@ describe('runCuration (simulated fares, Groq unavailable)', () => {
     expect(new Set(badges).size).toBe(badges.length);
   });
 
+  it('regular and deep searches send different models, prompts and numbers of candidates to Groq', async () => {
+    process.env.GROQ_API_KEY = 'k';
+    delete process.env.GROQ_MODEL;
+    delete process.env.GROQ_DEEP_MODEL;
+    const seen: { model: string; system: string; n: number; effort: string }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      const cands = JSON.parse(body.messages[1].content).candidates as { id: string; priceUsd: number }[];
+      seen.push({ model: body.model, system: body.messages[0].content, n: cands.length, effort: body.reasoning_effort });
+      const c = cands[0];
+      const out = { headline: `Pick is $${c.priceUsd}.`, summary: 'Fine.', picks: [{ candidateId: c.id, fit: 90, why: `About $${c.priceUsd}.`, reasons: ['Fits.'], scores: { price: 90, travelTime: 80, connections: 70, weeksFit: 100 } }] };
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(out) } }] }), { status: 200 });
+    }));
+    await runCuration(q(), { stay: 'range', priority: 'balance', depth: 'regular' });
+    await runCuration(q(), { stay: 'range', priority: 'balance', depth: 'deep' });
+    vi.unstubAllGlobals();
+    const [regular, deep] = seen;
+    expect(regular).toMatchObject({ model: 'openai/gpt-oss-20b', n: 10, effort: 'low' });
+    expect(deep).toMatchObject({ model: 'openai/gpt-oss-120b', n: 12, effort: 'low' });
+    expect(regular.system).toContain('regular search');
+    expect(deep.system).toContain('Deep Search');
+  });
+
+  it('a search with no depth given is a regular one', async () => {
+    const r = await runCuration(q(), { stay: 'range', priority: 'balance' });
+    expect(r.routes.length).toBeGreaterThan(0);
+  });
+
   it('handles one-way searches', async () => {
     const r = await runCuration(q({ returnWeek: null }), { stay: 'cheapest', priority: 'price' });
     expect(r.routes.length).toBeGreaterThan(0);
@@ -50,7 +78,7 @@ describe('runCuration (simulated fares, Groq unavailable)', () => {
       const best = cands[0];
       const out = {
         headline: `Top pick is $${best.priceUsd}.`, summary: 'Checked many combinations.',
-        picks: [{ candidateId: best.id, fit: 93, badge: 'Best fit', warning: null, why: `About $${best.priceUsd} per adult.`, reasons: ['Matches your weeks.'], scores: { price: 90, travelTime: 80, connections: 70, weeksFit: 100 } }],
+        picks: [{ candidateId: best.id, fit: 93, why: `About $${best.priceUsd} per adult.`, reasons: ['Matches your weeks.'], scores: { price: 90, travelTime: 80, connections: 70, weeksFit: 100 } }],
       };
       return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(out) } }] }), { status: 200 });
     }));

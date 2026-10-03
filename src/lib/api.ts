@@ -1,5 +1,5 @@
 // The single seam between the UI and the backend (Vercel functions in /api).
-import type { City, CurationResult, SearchQuery, WeekFare } from '../shared/types';
+import type { City, CurationResult, QuotaSummary, SearchQuery, WeekFare } from '../shared/types';
 import { useSyncExternalStore } from 'react';
 import { auth } from './firebase';
 import { toSearchParams } from './queryUrl';
@@ -32,14 +32,9 @@ async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> 
 }
 
 // --- searches left today (shared by the header pill, search page and results) ---
-export interface QuotaInfo {
-  used: number;
-  limit: number;
-  resetsAt?: string;
-}
-let quota: QuotaInfo | null = null;
+let quota: QuotaSummary | null = null;
 const listeners = new Set<() => void>();
-export function setQuota(q: QuotaInfo) {
+export function setQuota(q: QuotaSummary) {
   quota = q;
   listeners.forEach((l) => l());
 }
@@ -81,10 +76,15 @@ export interface RecentSearch {
   topPrice: number;
   createdAt: number;
 }
-export interface Me extends QuotaInfo {
+export interface Me extends QuotaSummary {
   email: string;
   recent: RecentSearch[];
 }
 export const getMe = () => authedFetch<Me>('/api/me').then((m) => (setQuota(m), m));
 export const deleteAccount = () => authedFetch<{ ok: true }>('/api/me', { method: 'DELETE' });
 export const addPhone = (phone: string) => authedFetch<{ ok: true }>('/api/add-phone', { method: 'POST', body: JSON.stringify({ phone }) });
+
+export const sendEmailCode = () =>
+  authedFetch<{ verified: boolean; email?: string; sent?: boolean; retryAfter?: number }>('/api/email-code/send', { method: 'POST' });
+export const verifyEmailCode = (code: string) =>
+  authedFetch<{ verified: true }>('/api/email-code/verify', { method: 'POST', body: JSON.stringify({ code }) });

@@ -22,14 +22,14 @@ export function toE164(dial: string, typed: string): string {
 }
 
 export function AddPhonePage() {
-  const { phoneOnFile, emailVerified, refresh } = useAuth();
+  const { phoneOnFile, refresh } = useAuth();
   const navigate = useNavigate();
   const [dial, setDial] = useState('+1');
   const [number, setNumber] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  if (!emailVerified) return <Navigate to="/verify-email" replace />;
+  // Already done: head on. The gate sends anyone who still needs to verify their email to that step.
   if (phoneOnFile) return <Navigate to="/search" replace />;
 
   const submit = async (e: FormEvent) => {
@@ -48,7 +48,7 @@ export function AddPhonePage() {
   };
 
   return (
-    <AuthShell title="One last step" intro="We ask for a phone number to keep free accounts fair. We don't text you, don't verify it, and don't share it. We only keep a scrambled version.">
+    <AuthShell title="One last step" intro="We ask for a phone number to keep free accounts fair. We only keep a scrambled version of it and never share it.">
       <form className="stack" style={{ gap: 14 }} onSubmit={(e) => void submit(e)}>
         <div className="field">
           <label htmlFor="dial">Country</label>

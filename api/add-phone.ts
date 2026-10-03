@@ -10,7 +10,7 @@ import { hashPhone, isFakeLooking, normalizePhone } from './_lib/phone.js';
 const MAX_ATTEMPTS = 5;
 
 export const POST = handle(async (req) => {
-  const user = await requireUser(req, { allowNoPhone: true });
+  const user = await requireUser(req, { allowNoPhone: true, allowUnverifiedEmail: true });
   if (user.phoneOnFile) return json(200, { ok: true });
 
   const parsed = z.object({ phone: z.string().max(30) }).safeParse(await req.json().catch(() => null));

@@ -21,6 +21,14 @@ export interface Week {
 
 export type StayPreference = 'cheapest' | 'range' | 'about-two-weeks' | 'exact';
 export type Priority = 'price' | 'balance' | 'speed';
+/** Regular = small, cheap model. Deep = larger model, more options, closer look (1 per day). */
+export type Depth = 'regular' | 'deep';
+
+export interface QuotaSummary {
+  regular: { used: number; limit: number };
+  deep: { used: number; limit: number };
+  resetsAt?: string;
+}
 
 export interface SearchQuery {
   from: City;
@@ -31,6 +39,7 @@ export interface SearchQuery {
   cabin: 'economy' | 'premium' | 'business';
   stay: StayPreference;
   priority: Priority;
+  depth: Depth;
 }
 
 /** Lowest fare seen for a departure week (powers the week picker bars + results chart). */
@@ -108,7 +117,9 @@ export interface CurationResult {
   sample?: boolean;
   /** Plain-language note, e.g. "Few fares cached for these weeks; check the links for live prices." */
   dataNote?: string;
-  quota?: { used: number; limit: number };
+  quota?: QuotaSummary;
+  /** Which kind of search produced this result. */
+  depth?: Depth;
   weekFares: WeekFare[];
   routes: CuratedRoute[];
 }

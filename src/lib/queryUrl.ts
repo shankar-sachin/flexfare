@@ -1,12 +1,13 @@
 // SearchQuery <-> URL, so results are shareable and survive a reload:
-//   /results?from=SFO&to=LIS&out=2026-W43&back=2026-W45&stay=range&prio=balance&pax=1&cabin=economy
+//   /results?from=SFO&to=LIS&out=2026-W43&back=2026-W45&stay=range&prio=balance&pax=1&cabin=economy&depth=regular
 // `from`/`to` are IATA city codes. `back` is omitted for one-way.
-import type { City, Priority, SearchQuery, StayPreference } from '../shared/types';
+import type { City, Depth, Priority, SearchQuery, StayPreference } from '../shared/types';
 import { formatIsoWeek, parseIsoWeek, weeksBetween } from '../shared/weeks';
 
 const STAYS: StayPreference[] = ['cheapest', 'range', 'about-two-weeks', 'exact'];
 const PRIORITIES: Priority[] = ['price', 'balance', 'speed'];
 const CABINS: SearchQuery['cabin'][] = ['economy', 'premium', 'business'];
+const DEPTHS: Depth[] = ['regular', 'deep'];
 
 export function toSearchParams(q: SearchQuery): URLSearchParams {
   const p = new URLSearchParams({
@@ -17,6 +18,7 @@ export function toSearchParams(q: SearchQuery): URLSearchParams {
     prio: q.priority,
     pax: String(q.travelers),
     cabin: q.cabin,
+    depth: q.depth,
   });
   if (q.returnWeek) p.set('back', formatIsoWeek(q.returnWeek));
   return p;
@@ -46,9 +48,10 @@ export function parseSearchParams(
   const stay = (p.get('stay') ?? 'range') as StayPreference;
   const priority = (p.get('prio') ?? 'balance') as Priority;
   const cabin = (p.get('cabin') ?? 'economy') as SearchQuery['cabin'];
+  const depth = (p.get('depth') ?? 'regular') as Depth;
   const travelers = Number(p.get('pax') ?? 1);
-  if (!STAYS.includes(stay) || !PRIORITIES.includes(priority) || !CABINS.includes(cabin)) return null;
+  if (!STAYS.includes(stay) || !PRIORITIES.includes(priority) || !CABINS.includes(cabin) || !DEPTHS.includes(depth)) return null;
   if (!Number.isInteger(travelers) || travelers < 1 || travelers > 9) return null;
 
-  return { from, to, departWeek, returnWeek, travelers, cabin, stay, priority };
+  return { from, to, departWeek, returnWeek, travelers, cabin, stay, priority, depth };
 }

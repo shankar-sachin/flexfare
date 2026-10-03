@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DepthChoice } from '../components/DepthChoice';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { Hero } from '../components/Hero';
@@ -33,9 +34,10 @@ export function SearchPage() {
     };
   }, [query.from.code, query.to.code]);
 
-  const left = quota ? Math.max(0, quota.limit - quota.used) : null;
+  const left = (d: 'regular' | 'deep') => (quota ? Math.max(0, quota[d].limit - quota[d].used) : null);
+  const leftNow = left(query.depth);
   const sameCity = query.from.code === query.to.code;
-  const blocked = left === 0 || sameCity;
+  const blocked = leftNow === 0 || sameCity;
   const go = () => navigate(`/results?${toSearchParams(query)}`);
 
   return (
@@ -49,18 +51,19 @@ export function SearchPage() {
           fares={fares}
           onChange={setQuery}
           footer={
-            <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
+            <div className="stack" style={{ gap: 12, alignItems: 'flex-end' }}>
+              <DepthChoice value={query.depth} onChange={(depth) => setQuery({ depth })} quota={quota} />
               <button type="button" className="btn btn--signal btn--lg" disabled={blocked} onClick={go}>
-                Curate my routes <ArrowRight />
+                {query.depth === 'deep' ? 'Run deep search' : 'Curate my routes'} <ArrowRight />
               </button>
-              <span className="muted" style={{ fontSize: 14 }} aria-live="polite">
+              <span className="muted" style={{ fontSize: 14, textAlign: 'right' }} aria-live="polite">
                 {sameCity
                   ? 'Pick two different cities.'
-                  : left === null
+                  : leftNow === null
                     ? ' '
-                    : left === 0
-                      ? 'No searches left today. They reset at 00:00 UTC.'
-                      : `Uses 1 of your ${left} remaining ${left === 1 ? 'search' : 'searches'} today. Repeat searches are free.`}
+                    : leftNow === 0
+                      ? `No ${query.depth === 'deep' ? 'deep searches' : 'regular searches'} left today. They reset at 00:00 UTC.`
+                      : `Uses 1 of your ${leftNow} ${query.depth === 'deep' ? 'deep' : 'regular'} ${leftNow === 1 ? 'search' : 'searches'} left today. Repeat searches are free.`}
               </span>
             </div>
           }

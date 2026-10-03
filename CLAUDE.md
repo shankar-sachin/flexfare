@@ -24,9 +24,9 @@ npm run build
 
 1. **City to city, not airport to airport.** A `City` (IATA city code like SFO, NYC, LON) expands to all its airports, plus optional `nearby` arrivals reachable by ground transport (`api/_lib/nearby.ts`).
 2. **Weeks, not dates.** Users pick a leave week and a return week (ISO weeks, Mon-Sun). Every day in both weeks is searched.
-3. **Accounts are required to search.** Gate order: signed in -> email verified -> phone on file (collected, NOT verified). Signed-out users get a fixed demo at `/demo` (no API calls).
-4. **Limits (server-side, one Firestore transaction):** 5 searches/user/day, 15/IP/day, 300 global/day. Same search within 6h is cached and free. Quota is refunded if our side fails or nothing is found.
-5. **The LLM never invents data.** Fares come from the provider; `scoring.ts` precomputes every comparison; `groq.ts` rejects answers with unknown ids, reused badges, or any `$` amount not in the data, retries once, then falls back to a deterministic ranking (`aiFallback`).
+3. **Accounts are required to search.** Gate order: signed in -> phone on file (collected, NOT verified) -> email verified. Email is verified with a 6-digit code we email through Brevo (`api/email-code/*`, rules in `api/_lib/emailCodeLogic.ts`: 10 min expiry, 5 wrong tries, 1 send/min, 5 sends/hour, only an HMAC of the code is stored). Google/magic-link accounts arrive already verified. Signed-out users get a fixed demo at `/demo` (no API calls).
+4. **Limits (server-side, one Firestore transaction):** per user per day: 4 regular + 1 deep (`DAILY_REGULAR_LIMIT`, `DAILY_DEEP_LIMIT`; stored as `count` and `deepCount` on the usage doc); 15/IP/day and 300 global/day count both kinds. Same search within 6h is cached and free. Quota is refunded if our side fails or nothing is found.
+5. **The LLM never invents data.** Fares come from the provider; `scoring.ts` precomputes every comparison; `groq.ts` rejects answers with unknown ids, reused badges, or any `$` amount that isn't a real price, a given difference, or the difference between two picks. Badges and warnings are computed from the data in `pipeline.ts` (`decorate`), never taken from the model, and an answer is rejected if it calls a pick nonstop/direct when it has stops in every direction. Models: a regular search uses `GROQ_MODEL` (default `openai/gpt-oss-20b`, low reasoning, 10 candidates); a Deep Search uses `GROQ_DEEP_MODEL` (default `openai/gpt-oss-120b`, medium reasoning, 12 candidates, fuller trade-off explanations). Call budget: at most 2 requests: a bad answer gets one more try on the SAME model with the reason (so regular stays cheap); if the model is down or rate limited the other one tries; a request Groq rejects outright (400/401) is never repeated. Deep and regular results are cached separately (`depth` is in the cache key and the URL). Only gpt-oss-20b/120b and qwen3.8-27b support Groq's strict JSON mode. If both fail the result is a deterministic ranking (`aiFallback`), which is NOT cached and does NOT count against the user's daily searches. Groq's free tier allows about 8k tokens/minute per model, so prompts stay small (10 candidates).
 6. flexfare doesn't sell tickets. It links out (`src/shared/links.ts`). Fares are estimates.
 
 ## Layout
@@ -43,7 +43,7 @@ src/
   components/               Header, Guards (Gate/GuestOnly/NeedsUser), SearchPanel, CityField (autocomplete),
                             WeekPicker, DayPicker, RouteCard, FindLinks, AuthShell, ...
   pages/                    Landing, Search, Results (demo prop), Route (demo prop), Auth, FinishEmailLink,
-                            VerifyEmail, AddPhone, Account
+                            VerifyEmail (code entry), AddPhone, Account
 ```
 
 Routes: `/` `/demo` `/demo/route/:id` `/signup` `/signin` `/auth/finish` `/verify-email` `/add-phone` (open),

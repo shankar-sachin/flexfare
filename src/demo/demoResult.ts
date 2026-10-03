@@ -243,5 +243,6 @@ export function demoQuery(weeks: Week[]): SearchQuery {
     cabin: 'economy',
     stay: 'range',
     priority: 'balance',
+    depth: 'regular',
   };
 }
