@@ -90,21 +90,18 @@ describe('home page (signed out)', () => {
     expect(within(plan).getByText(/reset at 00:00 UTC/)).toBeTruthy();
   });
 
-  it('answers the real questions people have, truthfully', () => {
+  it('answers the questions people have, truthfully', () => {
     signedOut();
     setup();
     const faq = screen.getByRole('region', { name: 'Questions.' });
     const questions = Array.from(faq.querySelectorAll('summary')).map((s) => s.textContent);
     expect(questions).toEqual([
       'Does flexfare sell tickets?', 'Where do the prices come from?', 'What does the AI actually do?', 'Why do I need an account?',
-      'What is the phone number for?', 'Can I try it first?', 'How far ahead can I search?',
+      'Can I try it first?', 'How far ahead can I search?',
     ]);
-    expect(faq.querySelectorAll('details')).toHaveLength(7);
+    expect(faq.querySelectorAll('details')).toHaveLength(6);
     expect(within(faq).getByText(/No\. flexfare finds and ranks flights/)).toBeTruthy();
-    expect(within(faq).getByText(/Each phone number can be linked to only one flexfare account/)).toBeTruthy();
-    expect(within(faq).getByText(/store only a scrambled version of it and never share it/)).toBeTruthy();
-    // the page may not claim a phone check that doesn't exist (nobody is texted a code)
-    expect(faq.textContent).not.toMatch(/\b(sms|text message|texted a code|verification code (by|via) (text|phone))/i);
+    expect(faq.textContent).not.toMatch(/phone/i); // the FAQ says nothing about the phone number
     expect(within(faq).getByText(/treat every price as an estimate/)).toBeTruthy();
     expect(within(faq).getByRole('link', { name: 'sample search' }).getAttribute('href')).toBe('/demo');
   });
