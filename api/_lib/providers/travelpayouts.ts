@@ -5,7 +5,7 @@
 // real response (fixtures go in ./__fixtures__) before relying on it.
 import { createHash } from 'node:crypto';
 import type { Week, WeekFare } from '../../../src/shared/types.js';
-import { nearbyFor } from '../nearby.js';
+import { nearbyFor } from '../../../src/shared/nearby.js';
 import type { DayGridCell, FareCandidate, FareProvider, NormalizedQuery, SearchResult } from './types.js';
 
 const BASE = 'https://api.travelpayouts.com';

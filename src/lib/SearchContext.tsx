@@ -19,6 +19,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const weeks = useMemo(() => upcomingWeeks(12), []);
   const cities = useRef(new Map(POPULAR_CITIES.map((c) => [c.code, c])));
   const [query, setQueryState] = useState<SearchQuery>(() => ({
+    trip: 'round',
+    extraLegs: [],
     from: cities.current.get('SFO')!,
     to: cities.current.get('LIS')!,
     departWeek: weeks[2],
