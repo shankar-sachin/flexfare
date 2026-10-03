@@ -30,7 +30,12 @@ export function Header({ children, showHowItWorks = false }: { children?: ReactN
           <span className="brand__word">{BRAND}</span>
         </Link>
         <nav className="site-nav" aria-label="Primary">
-          {showHowItWorks && !user && <a href="#how">How it works</a>}
+          {showHowItWorks && !user && (
+            <>
+              <a href="#how">How it works</a>
+              <a href="#faq">FAQ</a>
+            </>
+          )}
           {!loading && !user && (
             <>
               <Link to="/signin">Sign in</Link>
