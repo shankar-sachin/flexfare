@@ -20,6 +20,7 @@ flexfare searches city to city (every airport in each city) across whole weeks i
 
 - Free accounts only: email + password (full name, confirm password, live strength meter), Google, or magic link. Sign-up order: phone number (collected, not verified, no SMS) then a 6-digit code emailed to you. Google and magic-link accounts skip the code, since those already prove the email.
 - Each user gets 4 regular searches (small, cheap AI model) and 1 Deep Search (larger model, looks at more options with more reasoning) per day. Repeat searches within 6 hours are cached and free.
+- Round trip, one way, or multi-city (up to 4 flights, each searched on its own and booked separately; one regular search per flight).
 - Signed-out visitors can open a fixed demo at `/demo`.
 
 ## Run it

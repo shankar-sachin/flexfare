@@ -6,6 +6,8 @@ interface Props {
   fares: WeekFare[];
   /** True while the fares are being fetched; afterwards an empty list simply means no bars. */
   loading?: boolean;
+  /** One-way: every tap picks the leave week and there is no return. */
+  single?: boolean;
   depart: number; // index into weeks
   ret: number | null;
   onChange: (depart: number, ret: number | null) => void;
@@ -16,13 +18,14 @@ interface Props {
  * Two-tap range picker over weeks. First tap = leave week, second tap (later week) = return week.
  * Tapping again starts a new range. Bars show the lowest fare per week relative to the cheapest.
  */
-export function WeekPicker({ weeks, fares, loading, depart, ret, onChange, disabled }: Props) {
+export function WeekPicker({ weeks, fares, loading, single, depart, ret, onChange, disabled }: Props) {
   const fareFor = (w: Week) => fares.find((f) => f.isoWeek === w.isoWeek)?.lowest ?? 0;
   const known = weeks.map(fareFor).filter((n) => n > 0);
   const min = known.length ? Math.min(...known) : 0;
 
   const pick = (i: number) => {
-    if (ret !== null || i <= depart) onChange(i, null);
+    if (single) onChange(i, null);
+    else if (ret !== null || i <= depart) onChange(i, null);
     else onChange(depart, i);
   };
 
