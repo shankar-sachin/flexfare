@@ -1,4 +1,10 @@
-# flexfare
+<p align="center">
+  <img src="public/logo.svg" alt="flexfare logo" width="96" height="96">
+</p>
+
+<h1 align="center">flexfare</h1>
+
+<p align="center">Pick your flight by the week. An AI reads the real fares and tells you which is best.</p>
 
 [![CI](https://github.com/shankar-sachin/flexfare/actions/workflows/ci.yml/badge.svg)](https://github.com/shankar-sachin/flexfare/actions/workflows/ci.yml)
 [![Live site](https://img.shields.io/website?url=https%3A%2F%2Fflexfare.vercel.app&up_message=live&down_message=down&label=flexfare.vercel.app&labelColor=111317&color=FFC72C)](https://flexfare.vercel.app)
