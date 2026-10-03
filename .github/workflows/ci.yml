@@ -10,7 +10,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel an outdated run when a PR gets a new push, but never cancel a run on main: a cancelled run
+  # there shows up as a failing badge when two merges land close together.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
