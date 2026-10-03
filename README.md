@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="public/logo.svg" alt="flexfare logo" width="96" height="96">
+  <img src="docs/assets/banner.png" alt="flexfare: pick the week, we'll find the flight" width="100%">
 </p>
-
-<h1 align="center">flexfare</h1>
-
-<p align="center">Pick your flight by the week. An AI reads the real fares and tells you which is best.</p>
 
 <p align="center">
   <a href="https://github.com/shankar-sachin/flexfare/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/shankar-sachin/flexfare/actions/workflows/ci.yml/badge.svg"></a>
@@ -23,8 +19,6 @@
 </p>
 
 <h2 align="center">🔗 <a href="https://flexfare.vercel.app/">flexfare.vercel.app</a></h2>
-
-<p align="center"><b>Pick the week. We'll find the flight.</b></p>
 
 flexfare searches city to city (every airport in each city) across whole weeks instead of fixed dates, then uses AI to shortlist the best routes and explain why each one made the cut. It finds flights and shows where to book them: directly with the airline (recommended), or on Google Flights, Skyscanner, Expedia or Kayak. It does not sell tickets.
 
