@@ -101,7 +101,10 @@ describe('home page (signed out)', () => {
     ]);
     expect(faq.querySelectorAll('details')).toHaveLength(7);
     expect(within(faq).getByText(/No\. flexfare finds and ranks flights/)).toBeTruthy();
-    expect(within(faq).getByText(/We don't text it, we don't verify it/)).toBeTruthy(); // matches what really happens
+    expect(within(faq).getByText(/Each phone number can be linked to only one flexfare account/)).toBeTruthy();
+    expect(within(faq).getByText(/store only a scrambled version of it and never share it/)).toBeTruthy();
+    // the page may not claim a phone check that doesn't exist (nobody is texted a code)
+    expect(faq.textContent).not.toMatch(/\b(sms|text message|texted a code|verification code (by|via) (text|phone))/i);
     expect(within(faq).getByText(/treat every price as an estimate/)).toBeTruthy();
     expect(within(faq).getByRole('link', { name: 'sample search' }).getAttribute('href')).toBe('/demo');
   });

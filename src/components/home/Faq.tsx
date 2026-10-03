@@ -20,7 +20,7 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
   },
   {
     q: 'What is the phone number for?',
-    a: "To discourage duplicate accounts. We don't text it, we don't verify it, and we store only a scrambled version of it.",
+    a: "It's part of how we keep accounts unique. Each phone number can be linked to only one flexfare account, which keeps the free daily searches fair for everyone. We store only a scrambled version of it and never share it.",
   },
   {
     q: 'Can I try it first?',
