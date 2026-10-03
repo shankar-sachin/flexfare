@@ -49,6 +49,10 @@ src/
 Routes: `/` `/demo` `/demo/route/:id` `/signup` `/signin` `/auth/finish` `/verify-email` `/add-phone` (open),
 `/search` `/results?...` `/route/:id?...` `/account` (gated). Results state lives in the URL (`queryUrl.ts`).
 
+## City search
+
+`src/lib/cityIndex.ts` searches ~3,500 cities (every city with airline service, from Travelpayouts' free static data, rebuilt with `npm run build:cities` into `src/data/cities.json`) on every keystroke with no network: name, any word of the name, city/airport code, country, accent-insensitive, well-known cities ranked first. It loads as its own ~42 KB chunk. `src/shared/metro.ts` defines which passenger airports a big metro means (San Francisco = SFO, OAK, SJC; the raw data splits these and adds private fields), used by both the dropdown and the server's `airportsFor`. There is no autocomplete API.
+
 ## Known gaps
 
 - Fare sources (`api/_lib/providers/`): `serpapi.ts` (live Google Flights; 1 credit per search, prices ONE day combination per search so `pairs.ts` picks the 3 (5 deep) best-fitting combinations; 24h shared cache in Firestore `serpFares`; monthly credit cap in `serpCredits.ts`; return-leg details are not known, so `stopsBack`/`minutesBack` are null and the UI sends people to Google Flights to pick the return), `travelpayouts.ts` (verified against the real API: works, but its cache is too thin for week searches: ~1 fare for SFO-LIS across two months), `simulated.ts`. The serpapi provider is tested against a SerpApi-shaped fixture, not yet against a real key.

@@ -1,6 +1,6 @@
 import type { City } from '../shared/types';
 
-/** Seed list for the empty autocomplete state and URL lookups. Live search comes from /api/places. */
+/** Small built-in list shown while the full city index (cityIndex.ts) is still loading. */
 export const POPULAR_CITIES: City[] = [
   { code: 'SFO', name: 'San Francisco', country: 'United States', airports: ['SFO', 'OAK', 'SJC'] },
   { code: 'LAX', name: 'Los Angeles', country: 'United States', airports: ['LAX', 'BUR', 'LGB', 'SNA'] },

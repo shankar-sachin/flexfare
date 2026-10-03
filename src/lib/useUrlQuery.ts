@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { SearchQuery } from '../shared/types';
-import { searchCities } from './api';
+import { loadCityIndex } from './cityIndex';
 import { parseSearchParams } from './queryUrl';
 import { useSearch } from './SearchContext';
 
@@ -27,15 +27,15 @@ export function useUrlQuery(): { query: SearchQuery | null; params: URLSearchPar
     const stubs = [query.from, query.to].filter((c) => c.name === c.code);
     if (stubs.length === 0) return;
     let live = true;
-    Promise.all(
-      stubs.map((s) =>
-        searchCities(s.code).then((list) => {
-          const hit = list.find((c) => c.code === s.code);
-          if (hit) rememberCity(hit);
-        }),
-      ),
-    )
-      .then(() => live && setVersion((v) => v + 1))
+    loadCityIndex()
+      .then((index) => {
+        let found = false;
+        for (const s of stubs) {
+          const hit = index.byCode(s.code);
+          if (hit) (rememberCity(hit), (found = true));
+        }
+        if (found && live) setVersion((v) => v + 1);
+      })
       .catch(() => undefined);
     return () => {
       live = false;

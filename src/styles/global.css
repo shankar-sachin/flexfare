@@ -806,3 +806,10 @@ p {
     grid-template-columns: 1fr;
   }
 }
+
+.combo-mark {
+  background: var(--signal-soft);
+  color: inherit;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--signal-soft);
+}

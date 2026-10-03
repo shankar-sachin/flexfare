@@ -5,7 +5,7 @@ import { upcomingWeeks } from '../../src/shared/weeks.js';
 import { cacheGet, cacheSet } from './cache.js';
 import { askGroq, modelPlan, type AiPick } from './groq.js';
 import { buildLinks } from '../../src/shared/links.js';
-import { nearbyFor } from './nearby.js';
+import { nearbyFor } from '../../src/shared/nearby.js';
 import { buildUserMessage, systemPrompt } from './prompt.js';
 import { getProvider } from './providers/index.js';
 import type { DayGridCell, NormalizedQuery } from './providers/types.js';
