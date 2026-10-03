@@ -96,3 +96,10 @@ export function timeAgo(iso: string, now = Date.now()): string {
   const h = Math.round(mins / 60);
   return h < 36 ? `${h}h ago` : `${Math.round(h / 24)} days ago`;
 }
+
+/** "2026-10-19" + 3 -> "2026-10-22" */
+export function addDays(iso: string, n: number): string {
+  const d = parseISO(iso);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}

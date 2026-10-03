@@ -1,4 +1,4 @@
-import type { Week, WeekFare } from '../../../src/shared/types.js';
+import type { Depth, Segment, StayPreference, Week, WeekFare } from '../../../src/shared/types.js';
 
 export interface NormalizedQuery {
   from: string; // IATA city code
@@ -7,6 +7,9 @@ export interface NormalizedQuery {
   returnWeek: Week | null;
   travelers: number;
   cabin: 'economy' | 'premium' | 'business';
+  /** Used by providers that can only price a few day combinations (they pick the ones that fit best). */
+  stay?: StayPreference;
+  depth?: Depth;
 }
 
 export interface FareCandidate {
@@ -25,6 +28,10 @@ export interface FareCandidate {
   minutesOut: number;
   minutesBack: number | null;
   departAt?: string;
+  /** Real flight details for the outbound leg, when the provider has them. */
+  outSegments?: Segment[];
+  outLayovers?: string[];
+  longestLayoverMinutes?: number;
   aviasalesPath?: string;
   foundAt: string; // ISO
 }

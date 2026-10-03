@@ -30,9 +30,11 @@ describe('WeekPicker', () => {
   it('shows the lowest week and copes with no fare data', () => {
     const { rerender } = render(<WeekPicker weeks={weeks} fares={fares} depart={2} ret={null} onChange={() => undefined} />);
     expect(screen.getByText('Lowest')).toBeTruthy();
-    rerender(<WeekPicker weeks={weeks} fares={[]} depart={2} ret={null} onChange={() => undefined} />);
+    rerender(<WeekPicker weeks={weeks} fares={[]} loading depart={2} ret={null} onChange={() => undefined} />);
     expect(screen.queryByText('Lowest')).toBeNull();
-    expect(screen.getAllByText('…').length).toBe(weeks.length);
+    expect(screen.getAllByText('…').length).toBe(weeks.length); // still loading
+    rerender(<WeekPicker weeks={weeks} fares={[]} depart={2} ret={null} onChange={() => undefined} />);
+    expect(screen.queryByText('…')).toBeNull(); // loaded, and this source has no bars
   });
 
   it('is inert when disabled', () => {
