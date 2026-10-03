@@ -73,6 +73,6 @@ With no key set, codes are printed in the `vercel dev` terminal instead of email
 
 ## Contributing
 
-Make your own branch, open a pull request, and I'll review it. The full steps are in [CONTRIBUTING.md](CONTRIBUTING.md). To report a security problem privately, see [SECURITY.md](SECURITY.md). Everyone taking part is expected to follow the [code of conduct](CODE_OF_CONDUCT.md).
+Guides and architecture notes are in the [wiki](https://github.com/shankar-sachin/flexfare/wiki) (source in `docs/wiki/`). Make your own branch, open a pull request, and I'll review it. The full steps are in [CONTRIBUTING.md](CONTRIBUTING.md). To report a security problem privately, see [SECURITY.md](SECURITY.md). Everyone taking part is expected to follow the [code of conduct](CODE_OF_CONDUCT.md).
 
 Licensed under the Apache License 2.0. See `LICENSE`.
