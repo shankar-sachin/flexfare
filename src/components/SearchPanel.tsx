@@ -3,7 +3,7 @@ import { ChipGroup } from './ChipGroup';
 import { CityField } from './CityField';
 import { Calendar, Swap } from './Icons';
 import { TravelersField } from './TravelersField';
-import { WeekPicker } from './WeekPicker';
+import { WeekCalendar } from './WeekCalendar';
 import type { Priority, SearchQuery, StayPreference, Week, WeekFare } from '../shared/types';
 import { weeksBetween } from '../shared/weeks';
 
@@ -64,10 +64,10 @@ export function SearchPanel({ query, weeks, fares, faresLoading, onChange, foote
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 16 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, fontStretch: '110%' }}>Which weeks could you go?</h2>
           <p className="muted" style={{ fontSize: 15 }}>
-            Tap a week to leave, then a week to come back. Where we have fare history, bars show the lowest fare seen that week.
+            Click the week you could leave, then the week you could come back. You can search up to six months ahead.
           </p>
         </div>
-        <WeekPicker
+        <WeekCalendar
           weeks={weeks}
           fares={fares}
           loading={faresLoading}

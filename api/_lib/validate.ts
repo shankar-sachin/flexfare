@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { formatIsoWeek, parseIsoWeek, upcomingWeeks, weeksBetween } from '../../src/shared/weeks.js';
+import { HORIZON_WEEKS, MAX_RETURN_GAP_WEEKS, formatIsoWeek, parseIsoWeek, upcomingWeeks, weeksBetween } from '../../src/shared/weeks.js';
 import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
 import { HttpError } from './http.js';
 import type { NormalizedQuery } from './providers/types.js';
@@ -34,15 +34,15 @@ export function validateCurate(body: unknown): ValidQuery {
   const b = parsed.data;
   if (b.from === b.to) throw bad('Pick two different cities.');
 
-  const allowed = upcomingWeeks(12);
+  const allowed = upcomingWeeks(HORIZON_WEEKS);
   const departWeek = parseIsoWeek(b.out);
-  if (!departWeek || !allowed.some((w) => w.start === departWeek.start)) throw bad('Pick a leave week from the next 12 weeks.');
+  if (!departWeek || !allowed.some((w) => w.start === departWeek.start)) throw bad('Pick a leave week within the next 6 months.');
   let returnWeek = null;
   if (b.back) {
     returnWeek = parseIsoWeek(b.back);
     if (!returnWeek) throw bad('That return week is not valid.');
     const gap = weeksBetween(departWeek, returnWeek);
-    if (gap < 1 || gap > 8) throw bad('Return 1 to 8 weeks after you leave.');
+    if (gap < 1 || gap > MAX_RETURN_GAP_WEEKS) throw bad(`Return 1 to ${MAX_RETURN_GAP_WEEKS} weeks after you leave.`);
   }
   return {
     query: { from: b.from, to: b.to, departWeek, returnWeek, travelers: b.pax, cabin: b.cabin },

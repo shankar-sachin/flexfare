@@ -2,7 +2,7 @@
 //   /results?from=SFO&to=LIS&out=2026-W43&back=2026-W45&stay=range&prio=balance&pax=1&cabin=economy&depth=regular
 // `from`/`to` are IATA city codes. `back` is omitted for one-way.
 import type { City, Depth, Priority, SearchQuery, StayPreference } from '../shared/types';
-import { formatIsoWeek, parseIsoWeek, weeksBetween } from '../shared/weeks';
+import { MAX_RETURN_GAP_WEEKS, formatIsoWeek, parseIsoWeek, weeksBetween } from '../shared/weeks';
 
 const STAYS: StayPreference[] = ['cheapest', 'range', 'about-two-weeks', 'exact'];
 const PRIORITIES: Priority[] = ['price', 'balance', 'speed'];
@@ -42,7 +42,7 @@ export function parseSearchParams(
   if (backRaw && !returnWeek) return null;
   if (returnWeek) {
     const gap = weeksBetween(departWeek, returnWeek);
-    if (gap < 1 || gap > 8) return null;
+    if (gap < 1 || gap > MAX_RETURN_GAP_WEEKS) return null;
   }
 
   const stay = (p.get('stay') ?? 'range') as StayPreference;
