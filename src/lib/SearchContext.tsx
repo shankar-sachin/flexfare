@@ -16,7 +16,7 @@ interface SearchState {
 const Ctx = createContext<SearchState | null>(null);
 
 export function SearchProvider({ children }: { children: ReactNode }) {
-  const weeks = useMemo(() => upcomingWeeks(12), []);
+  const weeks = useMemo(() => upcomingWeeks(), []);
   const cities = useRef(new Map(POPULAR_CITIES.map((c) => [c.code, c])));
   const [query, setQueryState] = useState<SearchQuery>(() => ({
     trip: 'round',

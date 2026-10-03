@@ -28,7 +28,7 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
   },
   {
     q: 'How far ahead can I search?',
-    a: 'The next 12 weeks.',
+    a: 'Up to six months ahead.',
   },
 ];
 

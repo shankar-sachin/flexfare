@@ -103,6 +103,7 @@ describe('home page (signed out)', () => {
     expect(within(faq).getByText(/No\. flexfare finds and ranks flights/)).toBeTruthy();
     expect(faq.textContent).not.toMatch(/phone/i); // the FAQ says nothing about the phone number
     expect(within(faq).getByText(/treat every price as an estimate/)).toBeTruthy();
+    expect(within(faq).getByText('Up to six months ahead.')).toBeTruthy(); // matches the calendar's window
     expect(within(faq).getByRole('link', { name: 'sample search' }).getAttribute('href')).toBe('/demo');
   });
 

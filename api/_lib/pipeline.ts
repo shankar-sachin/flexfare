@@ -1,7 +1,7 @@
 // The curation pipeline: fares -> deterministic scoring -> Groq analysis -> CuratedRoute[].
 // The LLM only chooses candidates and writes text. Every number shown comes from provider data.
 import type { CuratedRoute, CurationResult, DayFare, Leg, Week, WeekFare } from '../../src/shared/types.js';
-import { upcomingWeeks } from '../../src/shared/weeks.js';
+import { HORIZON_WEEKS, upcomingWeeks } from '../../src/shared/weeks.js';
 import { cacheGet, cacheSet } from './cache.js';
 import { askGroq, modelPlan, type AiPick } from './groq.js';
 import { carrierCode } from '../../src/shared/airlines.js';
@@ -214,7 +214,7 @@ export async function getWeekFares(from: string, to: string): Promise<WeekFare[]
   const key = `${from}_${to}_${process.env.FARE_PROVIDER ?? 'simulated'}`;
   const hit = await cacheGet<WeekFare[]>('weekLows', key, 12 * 3600_000);
   if (hit) return hit;
-  const fares = await getProvider().weekLows(from, to, upcomingWeeks(12));
+  const fares = await getProvider().weekLows(from, to, upcomingWeeks(HORIZON_WEEKS));
   await cacheSet('weekLows', key, fares);
   return fares;
 }

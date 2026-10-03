@@ -17,7 +17,7 @@ export function isoWeekNumber(date: Date): { week: number; year: number } {
   return { week, year: d.getUTCFullYear() };
 }
 
-function mondayOf(date: Date): Date {
+export function mondayOf(date: Date): Date {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const day = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() - (day - 1));
@@ -39,11 +39,16 @@ export function makeWeek(monday: Date): Week {
   return { isoWeek: week, year, start: toISO(monday), end: toISO(end), label: weekLabel(monday, end) };
 }
 
+/** How far ahead you can search: about six months. */
+export const HORIZON_WEEKS = 26;
+/** The longest trip: a round trip's return week is at most this many weeks after the leave week. */
+export const MAX_RETURN_GAP_WEEKS = 12;
+
 /**
  * The next `count` bookable weeks. Starts with next week's Monday so the
  * current, partly-gone week isn't offered.
  */
-export function upcomingWeeks(count = 12, from = new Date()): Week[] {
+export function upcomingWeeks(count = HORIZON_WEEKS, from = new Date()): Week[] {
   const first = mondayOf(from);
   first.setUTCDate(first.getUTCDate() + 7);
   return Array.from({ length: count }, (_, i) => {

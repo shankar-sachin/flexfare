@@ -4,7 +4,7 @@
 // FROM-TO-WEEK (for example leg2=LIS-PAR-2026-W45). Links without `trip` (older ones) are read as round trip
 // when they have `back` and one way when they don't.
 import { MAX_LEGS, type City, type Depth, type Priority, type SearchLeg, type SearchQuery, type StayPreference, type TripType } from '../shared/types';
-import { formatIsoWeek, parseIsoWeek, weeksBetween } from '../shared/weeks';
+import { MAX_RETURN_GAP_WEEKS, formatIsoWeek, parseIsoWeek, weeksBetween } from '../shared/weeks';
 
 const STAYS: StayPreference[] = ['cheapest', 'range', 'about-two-weeks', 'exact'];
 const PRIORITIES: Priority[] = ['price', 'balance', 'speed'];
@@ -51,7 +51,7 @@ export function parseSearchParams(
   if (trip === 'round') {
     if (!returnWeek) return null;
     const gap = weeksBetween(departWeek, returnWeek);
-    if (gap < 1 || gap > 8) return null;
+    if (gap < 1 || gap > MAX_RETURN_GAP_WEEKS) return null;
   } else if (backRaw && trip === 'oneway') {
     return null; // a one-way search has no return week
   }

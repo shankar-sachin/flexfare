@@ -56,15 +56,16 @@ describe('trip type tabs', () => {
     expect(screen.queryByText(/now pick a return week/)).toBeNull();
   });
 
-  it('in one way mode every tap on a week picks the leave week', async () => {
+  it('in one way mode every click on a week picks the leave week', async () => {
     await setup();
     fireEvent.click(tab('One way'));
-    const weekButtons = within(screen.getByRole('group', { name: 'Weeks' })).getAllByRole('button');
-    fireEvent.click(weekButtons[5]);
-    expect(weekButtons[5].getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(weekButtons[1]); // an earlier week works too: still one way
-    expect(weekButtons[1].getAttribute('aria-pressed')).toBe('true');
-    expect(weekButtons[5].getAttribute('aria-pressed')).toBe('false');
+    const row = (name: RegExp) => screen.getAllByRole('button', { name })[0] as HTMLButtonElement;
+    fireEvent.click(row(/^Week 45,/));
+    expect(row(/^Week 45,/).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(row(/^Week 42,/)); // an earlier week works too: still one way
+    expect(row(/^Week 42,/).getAttribute('aria-pressed')).toBe('true');
+    expect(row(/^Week 45,/).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryAllByRole('button', { name: /Return week/ })).toHaveLength(0);
     expect(screen.getByTestId('trip').textContent).toBe('oneway');
   });
 
