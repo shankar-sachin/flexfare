@@ -1,5 +1,17 @@
 # flexfare
 
+[![CI](https://github.com/shankar-sachin/flexfare/actions/workflows/ci.yml/badge.svg)](https://github.com/shankar-sachin/flexfare/actions/workflows/ci.yml)
+[![Live site](https://img.shields.io/website?url=https%3A%2F%2Fflexfare.vercel.app&up_message=live&down_message=down&label=flexfare.vercel.app&labelColor=111317&color=FFC72C)](https://flexfare.vercel.app)
+[![License: Apache-2.0](https://img.shields.io/github/license/shankar-sachin/flexfare?labelColor=111317&color=FFC72C)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/shankar-sachin/flexfare/main?labelColor=111317&color=FFC72C)](https://github.com/shankar-sachin/flexfare/commits/main)
+
+[![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white&labelColor=111317)](tsconfig.json)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white&labelColor=111317)](https://react.dev)
+[![Vite 8](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&labelColor=111317)](https://vite.dev)
+[![Deployed on Vercel](https://img.shields.io/badge/deployed%20on-Vercel-000000?logo=vercel&logoColor=white&labelColor=111317)](https://vercel.com)
+[![Firebase Auth and Firestore](https://img.shields.io/badge/Firebase-Auth%20%2B%20Firestore-FFCA28?logo=firebase&logoColor=black&labelColor=111317)](https://firebase.google.com)
+[![AI by Groq](https://img.shields.io/badge/AI-Groq%20gpt--oss-F55036?labelColor=111317)](https://groq.com)
+
 ## 🔗 [flexfare.vercel.app](https://flexfare.vercel.app/)
 
 Pick the week. We'll find the flight.
