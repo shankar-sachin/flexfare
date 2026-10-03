@@ -915,3 +915,54 @@ p {
     transition: background-color 0.12s ease, border-color 0.12s ease;
   }
 }
+
+/* --- Booking options (sits on the dark price card) --- */
+.booking__title {
+  font-size: 18px;
+  font-weight: 800;
+}
+.booking__group {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--on-dark-muted);
+}
+.booking__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+  padding: 12px 14px;
+  border: 1.5px solid var(--on-dark-line);
+  border-radius: var(--r-md);
+  color: #fff;
+  text-decoration: none;
+}
+.booking__row:hover {
+  border-color: var(--on-dark-muted);
+  color: #fff;
+}
+.booking__row--rec {
+  border-color: var(--signal);
+  background: rgba(255, 199, 44, 0.08);
+}
+.booking__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.booking__label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-weight: 700;
+}
+.booking__note {
+  font-size: 13px;
+  color: var(--on-dark-muted);
+  overflow-wrap: anywhere;
+}

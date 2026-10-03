@@ -4,7 +4,7 @@
 
 Pick the week. We'll find the flight.
 
-flexfare searches city to city (every airport in each city) across whole weeks instead of fixed dates, then uses AI to shortlist the best routes and explain why each one made the cut. It finds flights and links you to Google Flights, Skyscanner or Aviasales to book. It does not sell tickets.
+flexfare searches city to city (every airport in each city) across whole weeks instead of fixed dates, then uses AI to shortlist the best routes and explain why each one made the cut. It finds flights and shows where to book them: directly with the airline (recommended), or on Google Flights, Skyscanner, Expedia or Kayak. It does not sell tickets.
 
 - Free accounts only: email + password (full name, confirm password, live strength meter), Google, or magic link. Sign-up order: phone number (collected, not verified, no SMS) then a 6-digit code emailed to you. Google and magic-link accounts skip the code, since those already prove the email.
 - Pick your weeks on a month-by-month calendar, up to six months ahead (returns up to 12 weeks after leaving).

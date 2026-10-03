@@ -62,8 +62,19 @@ describe('runCuration with a live-search provider', () => {
     for (const route of r.routes) {
       expect(route.inbound).toBeNull();
       expect(route.backDate).toBe('2026-11-03');
-      expect(route.links.googleFlights).toContain('google.com/travel/flights');
+      expect(route.booking.find((b) => b.id === 'google-flights')?.url).toContain('google.com/travel/flights');
     }
+  });
+
+  it('offers the airline itself first (recommended), then comparison sites, from the real flight numbers', async () => {
+    const r = await runCuration(q, { stay: 'range', priority: 'balance' });
+    const route = r.routes.find((x) => x.id === 'a')!;
+    expect(route.carriers).toEqual([{ code: 'UA', name: 'United' }, { code: 'LH', name: 'Lufthansa' }]);
+    expect(route.booking.map((b) => b.id)).toEqual(['airline-UA', 'airline-LH', 'google-flights', 'skyscanner', 'expedia', 'kayak']);
+    expect(route.booking[0]).toMatchObject({ kind: 'airline', recommended: true, prefilled: true, label: 'United Airlines' });
+    expect(route.booking[0].url).toContain('united.com/en/us/fsr/choose-flights');
+    expect(route.booking[0].url).toContain('f=SFO&t=LIS&d=2026-10-20&r=2026-11-03');
+    expect(route.booking[1].recommended).toBeFalsy();
   });
 
   it('flags a long layover from the real layover time', async () => {
