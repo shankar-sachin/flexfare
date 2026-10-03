@@ -7,7 +7,7 @@ import type { Segment, Week, WeekFare } from '../../../src/shared/types.js';
 import { airportsFor } from '../airports.js';
 import { cacheGet, cacheSet, hashKey } from '../cache.js';
 import { intEnv } from '../http.js';
-import { nearbyFor } from '../nearby.js';
+import { nearbyFor } from '../../../src/shared/nearby.js';
 import { fmtMinutes } from '../scoring.js';
 import { reserveCredits, refundCredits } from '../serpCredits.js';
 import { pickPairs, type DatePair } from './pairs.js';

@@ -6,7 +6,7 @@ import { cacheGet, cacheSet } from './cache.js';
 import { askGroq, modelPlan, type AiPick } from './groq.js';
 import { carrierCode } from '../../src/shared/airlines.js';
 import { buildBookingOptions, type Carrier } from '../../src/shared/booking.js';
-import { nearbyFor } from './nearby.js';
+import { nearbyFor } from '../../src/shared/nearby.js';
 import { buildUserMessage, systemPrompt } from './prompt.js';
 import { getProvider } from './providers/index.js';
 import type { DayGridCell, NormalizedQuery } from './providers/types.js';

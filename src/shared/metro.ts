@@ -1,0 +1,38 @@
+// The passenger airports for big metro areas. The public airport data groups a city's airports by a
+// "city code" but includes private and general-aviation fields (Chicago lists Rockford and Waukegan) and misses
+// metros it files as separate cities (Oakland and San Jose are not part of San Francisco there). This list is
+// what "all airports in the city" means in flexfare. Cities not listed use the airports the data gives them.
+export const METRO: Record<string, string[]> = {
+  SFO: ['SFO', 'OAK', 'SJC'],
+  LAX: ['LAX', 'BUR', 'LGB', 'SNA', 'ONT'],
+  NYC: ['JFK', 'EWR', 'LGA'],
+  CHI: ['ORD', 'MDW'],
+  WAS: ['IAD', 'DCA', 'BWI'],
+  DFW: ['DFW', 'DAL'],
+  HOU: ['IAH', 'HOU'],
+  MIA: ['MIA', 'FLL'],
+  BOS: ['BOS'],
+  SEA: ['SEA'],
+  DTT: ['DTW'],
+  ORL: ['MCO'],
+  LON: ['LHR', 'LGW', 'STN', 'LTN', 'LCY'],
+  PAR: ['CDG', 'ORY'],
+  MIL: ['MXP', 'LIN', 'BGY'],
+  ROM: ['FCO', 'CIA'],
+  STO: ['ARN', 'BMA'],
+  MOW: ['SVO', 'DME', 'VKO'],
+  IST: ['IST', 'SAW'],
+  TYO: ['HND', 'NRT'],
+  OSA: ['KIX', 'ITM'],
+  SEL: ['ICN', 'GMP'],
+  BJS: ['PEK', 'PKX'],
+  SHA: ['PVG', 'SHA'],
+  BKK: ['BKK', 'DMK'],
+  SAO: ['GRU', 'CGH', 'VCP'],
+  RIO: ['GIG', 'SDU'],
+  BUE: ['EZE', 'AEP'],
+  YTO: ['YYZ', 'YTZ'],
+  YMQ: ['YUL'],
+  DXB: ['DXB', 'DWC'],
+  MEL: ['MEL', 'AVV'],
+};

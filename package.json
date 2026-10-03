@@ -10,7 +10,8 @@
     "build": "tsc -b && tsc -p tsconfig.api.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b && tsc -p tsconfig.api.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:cities": "node scripts/build-city-index.mjs"
   },
   "dependencies": {
     "firebase": "^12.19.0",
