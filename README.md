@@ -1,5 +1,7 @@
 # flexfare
 
+## 🔗 [flexfare.vercel.app](https://flexfare.vercel.app/)
+
 Pick the week. We'll find the flight.
 
 flexfare searches city to city (every airport in each city) across whole weeks instead of fixed dates, then uses AI to shortlist the best routes and explain why each one made the cut. It finds flights and links you to Google Flights, Skyscanner or Aviasales to book. It does not sell tickets.
