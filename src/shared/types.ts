@@ -30,11 +30,26 @@ export interface QuotaSummary {
   resetsAt?: string;
 }
 
+/** round = out and back; oneway = just the outbound; multi = 2 to 4 separate flights (see extraLegs). */
+export type TripType = 'round' | 'oneway' | 'multi';
+
+/** One more flight in a multi-city trip: its own cities and its own leave week. */
+export interface SearchLeg {
+  from: City;
+  to: City;
+  week: Week;
+}
+
+export const MAX_LEGS = 4; // multi-city: the first flight plus up to three more
+
 export interface SearchQuery {
+  trip: TripType;
+  /** Multi-city only: flights 2 to 4. The first flight is from/to/departWeek. */
+  extraLegs: SearchLeg[];
   from: City;
   to: City;
   departWeek: Week;
-  returnWeek: Week | null; // null = one-way
+  returnWeek: Week | null; // null unless trip is 'round'
   travelers: number;
   cabin: 'economy' | 'premium' | 'business';
   stay: StayPreference;

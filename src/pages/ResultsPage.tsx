@@ -9,6 +9,7 @@ import { ApiError } from '../lib/api';
 import { useSearch } from '../lib/SearchContext';
 import { useCuration } from '../lib/useCuration';
 import { useUrlQuery } from '../lib/useUrlQuery';
+import { MultiResultsPage } from './MultiResultsPage';
 
 type Sort = 'fit' | 'price' | 'speed';
 const SORTS: { value: Sort; label: string }[] = [
@@ -58,7 +59,7 @@ function ErrorBox({ error, regularHref }: { error: Error; regularHref: string })
   );
 }
 
-export function ResultsPage({ demo = false }: { demo?: boolean }) {
+function SingleResults({ demo = false }: { demo?: boolean }) {
   const { weeks, setQuery } = useSearch();
   const url = useUrlQuery();
   const query = demo ? demoQuery(weeks) : url.query;
@@ -225,4 +226,11 @@ export function ResultsPage({ demo = false }: { demo?: boolean }) {
       </main>
     </>
   );
+}
+
+/** A multi-city trip is a handful of one-way searches shown together; everything else is one search. */
+export function ResultsPage({ demo = false }: { demo?: boolean }) {
+  const { query } = useUrlQuery();
+  if (!demo && query?.trip === 'multi') return <MultiResultsPage query={query} />;
+  return <SingleResults demo={demo} />;
 }

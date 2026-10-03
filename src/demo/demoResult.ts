@@ -235,6 +235,8 @@ export function mockCuration(q: SearchQuery, weeks: Week[]): CurationResult {
 /** The fixed search the signed-out demo shows: San Francisco to Lisbon, dates relative to today. */
 export function demoQuery(weeks: Week[]): SearchQuery {
   return {
+    trip: 'round',
+    extraLegs: [],
     from: POPULAR_CITIES.find((c) => c.code === 'SFO')!,
     to: POPULAR_CITIES.find((c) => c.code === 'LIS')!,
     departWeek: weeks[2],

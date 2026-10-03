@@ -806,3 +806,25 @@ p {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Multi-city flight rows --- */
+.leg {
+  margin: 0;
+  padding: 16px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-lg);
+  min-inline-size: 0;
+}
+.leg__title {
+  padding: 0 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.leg__remove {
+  align-self: flex-start;
+  color: var(--link);
+  font-size: 15px;
+}
