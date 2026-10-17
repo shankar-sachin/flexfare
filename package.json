@@ -14,7 +14,7 @@
     "build:cities": "node scripts/build-city-index.mjs"
   },
   "dependencies": {
-    "firebase": "^12.19.0",
+    "firebase": "^13.0.0",
     "firebase-admin": "^13.10.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
