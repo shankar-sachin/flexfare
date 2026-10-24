@@ -2,7 +2,7 @@
 
 | Layer | Tech |
 |---|---|
-| Front end | Vite, React 18, TypeScript (strict), react-router 7, plain CSS tokens |
+| Front end | Vite, React 19, TypeScript (strict), react-router 7, plain CSS tokens |
 | API | Vercel serverless functions in `api/` (Web `Request`/`Response`) |
 | Auth | Firebase Auth in the browser, `firebase-admin` on the server |
 | Data | Firestore, server only (rules deny every client) |

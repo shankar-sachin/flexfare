@@ -7,7 +7,7 @@ flexfare is a flight search front-end with two ideas at its core:
 
 ## Stack
 
-- Vite + React 18 + TypeScript (strict), react-router-dom v7, Firebase Auth (client), Vitest
+- Vite + React 19 + TypeScript (strict), react-router-dom v7, Firebase Auth (client), Vitest
 - Backend: Vercel serverless functions in `api/` (Web `Request`/`Response` handlers, Node runtime), Firebase Admin + Firestore, Groq for the AI step
 - Plain CSS with design tokens. No CSS framework.
 
