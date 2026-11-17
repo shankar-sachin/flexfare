@@ -6,3 +6,7 @@ dist
 tsconfig.tsbuildinfo
 .claude/
 .DS_Store
+
+# Agent notes stay local.
+CLAUDE.md
+CLAUDE.md 
