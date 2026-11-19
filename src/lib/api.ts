@@ -1,5 +1,5 @@
 // The single seam between the UI and the backend (Vercel functions in /api).
-import type { CurationResult, QuotaSummary, SearchQuery, WeekFare } from '../shared/types';
+import type { BookLookup, BookRef, CurationResult, QuotaSummary, SearchQuery, WeekFare } from '../shared/types';
 import { useSyncExternalStore } from 'react';
 import { auth } from './firebase';
 import { toSearchParams } from './queryUrl';
@@ -62,6 +62,9 @@ function toRequest(q: SearchQuery): Map<string, unknown> {
   const p = toSearchParams(q);
   return new Map<string, unknown>([...p.entries()].map(([k, v]) => [k, k === 'pax' ? Number(v) : v]));
 }
+
+/** Looks up where to buy this exact flight directly (1 to 2 live-fare searches on our side, capped per user per day). */
+export const lookupBooking = (book: BookRef) => authedFetch<BookLookup>('/api/book', { method: 'POST', body: JSON.stringify({ book }) });
 
 export const weekFares = (from: string, to: string) =>
   authedFetch<{ fares: WeekFare[] }>(`/api/week-fares?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`).then((r) => r.fares);

@@ -145,7 +145,7 @@ export function RoutePage({ demo = false }: { demo?: boolean }) {
                 {shortDate(outDate)}
                 {backDate && `  →  ${shortDate(backDate)} · ${nights} nights`}
               </span>
-              <BookingOptions options={booking} demo={demo} />
+              <BookingOptions options={booking} demo={demo} book={!demo && !changedDays && query.travelers === 1 ? route.book : undefined} />
               <span style={{ fontSize: 13, color: '#9ea4ad' }}>
                 flexfare doesn't sell tickets: you finish booking on the site you choose. {route.priceFoundAt ? `Fare seen ${timeAgo(route.priceFoundAt)}. ` : ''}The airline sets the final price.
               </span>

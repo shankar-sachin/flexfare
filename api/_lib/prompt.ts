@@ -1,7 +1,9 @@
+import type Anthropic from '@anthropic-ai/sdk';
 import type { Scored } from './scoring.js';
 import { fmtMinutes } from './scoring.js';
 import type { NearbyAirport } from '../../src/shared/nearby.js';
-import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
+import type { Depth, NightsRange, Priority, StayPreference } from '../../src/shared/types.js';
+import { stayRange } from '../../src/shared/stay.js';
 
 const BASE_PROMPT = `You are flexfare's route analyst. You are given flight candidates that were already found and scored. Choose the best 3 to 5 for this traveler and explain the trade-offs in plain, specific language.
 
@@ -30,6 +32,7 @@ export interface PromptInput {
   to: string;
   priority: Priority;
   stay: StayPreference;
+  customStay?: NightsRange | null;
   hasReturn: boolean;
   pairsChecked: number;
   nearby: NearbyAirport[];
@@ -38,7 +41,7 @@ export interface PromptInput {
 
 export function buildUserMessage(p: PromptInput): string {
   const payload = {
-    traveler: { from: p.from, to: p.to, priority: p.priority, stayPreference: p.stay, roundTrip: p.hasReturn },
+    traveler: { from: p.from, to: p.to, priority: p.priority, stayPreference: p.stay, stayNights: p.hasReturn ? stayRange(p.stay, p.customStay) : null, roundTrip: p.hasReturn },
     dateCombinationsChecked: p.pairsChecked,
     nearbyArrivalOptions: p.nearby.map((n) => `${n.airport} (${n.city}) is a ${n.transfer} from the destination`),
     candidates: p.candidates.map((s) => ({
@@ -66,3 +69,85 @@ export function buildUserMessage(p: PromptInput): string {
   };
   return JSON.stringify(payload);
 }
+
+// --- headline + summary (a small, fast model writes these from the picks that were already validated) ---
+const SUMMARY_PROMPT = `You write the headline and summary for a flight search result. The picks were already chosen and explained; you are given them with their real data.
+- headline: one sentence (max 140 chars) giving the single most useful insight across the picks.
+- summary: 1-2 sentences (max 320 chars) on how the picks compare and what the traveler trades off.
+Hard rules:
+- Every dollar amount must come from the data: a priceUsd, a deltaVsCheapestUsd, a deltaVsNonstopUsd, or the exact difference between the priceUsd of two picks. Do no other arithmetic with prices.
+- Never call anything nonstop or direct unless a pick's stopsOut or stopsBack is 0, and say which direction.
+- Say nothing about a return leg whose stopsBack or travelTimeBack is null.
+- No hype, no emoji, no exclamation marks. Prices are estimates, not live availability.
+Return only JSON matching the schema.`;
+
+export function summaryPrompt(p: PromptInput & { picks: { pick: { candidateId: string; why: string; reasons: string[] }; s: Scored }[] }) {
+  const user = JSON.stringify({
+    traveler: { from: p.from, to: p.to, priority: p.priority, stayPreference: p.stay, stayNights: p.hasReturn ? stayRange(p.stay, p.customStay) : null, roundTrip: p.hasReturn },
+    dateCombinationsChecked: p.pairsChecked,
+    picks: p.picks.map(({ pick, s }) => ({
+      id: pick.candidateId,
+      route: `${s.c.originAirport} -> ${s.c.destAirport}`,
+      airline: s.c.airline,
+      outbound: `${s.weekday} ${s.c.outDate}`,
+      priceUsd: s.c.price,
+      stopsOut: s.c.stopsOut,
+      stopsBack: s.c.stopsBack,
+      travelTimeBack: s.c.minutesBack === null ? null : fmtMinutes(s.c.minutesBack),
+      deltaVsCheapestUsd: s.facts.deltaVsCheapest,
+      deltaVsNonstopUsd: s.facts.deltaVsNonstop,
+      isCheapest: s.facts.isCheapest,
+      isFastest: s.facts.isFastest,
+      why: pick.why,
+    })),
+  });
+  return { system: SUMMARY_PROMPT, user };
+}
+
+// --- the search step: Claude decides which day combinations are worth a SerpApi search ---
+export interface SearchPromptInput {
+  from: string;
+  to: string;
+  departWeek: { start: string; end: string };
+  returnWeek: { start: string; end: string } | null;
+  stay: StayPreference;
+  customStay?: NightsRange | null;
+  priority: Priority;
+  budget: number;
+  deep: boolean;
+  nearby: NearbyAirport[];
+}
+
+export function searchSystemPrompt(p: SearchPromptInput): string {
+  const nights = stayRange(p.stay, p.customStay);
+  const stayLine = !p.returnWeek
+    ? 'This is a one-way trip.'
+    : p.stay === 'about-two-weeks'
+      ? 'The traveler wants a stay of about 14 nights.'
+      : nights
+        ? `The traveler wants a stay of ${nights.min === nights.max ? `${nights.min} night${nights.min === 1 ? '' : 's'}` : `${nights.min} to ${nights.max} nights`}. Nights = return date minus outbound date.`
+        : p.stay === 'exact'
+          ? 'Any stay length inside the two weeks is fine.'
+          : 'Stay length does not matter; the cheapest fare wins.';
+  return `You are flexfare's fare scout. Find where the good fares are by calling search_flights, which prices ONE day combination (live Google Flights via SerpApi) per call. You have at most ${p.budget} calls, each costs real money, so never repeat a combination.
+Trip: ${p.from} to ${p.to}. Outbound must be ${p.departWeek.start} to ${p.departWeek.end}.${p.returnWeek ? ` Return must be ${p.returnWeek.start} to ${p.returnWeek.end}.` : ''} ${stayLine}
+Traveler's priority: ${p.priority}.${p.nearby.length ? ` Nearby arrival worth one call: ${p.nearby.map((n) => `${n.airport} (${n.city}, ${n.transfer})`).join('; ')}.` : ''}
+How to scout:
+- Start with the combination that best fits the stay length, then use the other calls to test days likely to be cheaper (Tuesday, Wednesday and Saturday departures are usually cheaper than Friday and Sunday) and to see whether a shorter or longer stay inside the preference saves money.
+- Make independent calls together in one turn. When the results show a clear winner, you may stop before using every call.
+- Use only dates inside the windows above. Do not state any prices or write a long answer: when finished, reply with the single word "done".`;
+}
+
+export const SEARCH_TOOL: Anthropic.Tool = {
+  name: 'search_flights',
+  description: 'Price one day combination on live Google Flights. Returns the cheapest few options with price in USD per adult, stops, duration and airlines. Costs one search credit unless the same search was made recently.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      out_date: { type: 'string', description: 'Outbound date, YYYY-MM-DD, inside the outbound window.' },
+      back_date: { type: 'string', description: 'Return date, YYYY-MM-DD, inside the return window. Omit for a one-way trip.' },
+      destination: { type: 'string', description: 'Arrival: "main" for the destination city, or a nearby airport code if one was offered.' },
+    },
+    required: ['out_date', 'destination'],
+  },
+};

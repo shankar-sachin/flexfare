@@ -15,7 +15,7 @@
   <a href="https://vite.dev"><img alt="Vite 8" src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white&labelColor=111317"></a>
   <a href="https://vercel.com"><img alt="Deployed on Vercel" src="https://img.shields.io/badge/deployed%20on-Vercel-000000?logo=vercel&logoColor=white&labelColor=111317"></a>
   <a href="https://firebase.google.com"><img alt="Firebase Auth and Firestore" src="https://img.shields.io/badge/Firebase-Auth%20%2B%20Firestore-FFCA28?logo=firebase&logoColor=black&labelColor=111317"></a>
-  <a href="https://groq.com"><img alt="AI by Groq" src="https://img.shields.io/badge/AI-Groq%20gpt--oss-F55036?labelColor=111317"></a>
+  <a href="https://www.anthropic.com"><img alt="AI by Claude" src="https://img.shields.io/badge/AI-Claude-D97757?labelColor=111317"></a>
 </p>
 
 <h2 align="center">🔗 <a href="https://flexfare.vercel.app/">flexfare.vercel.app</a></h2>
@@ -51,10 +51,10 @@ Copy `.env.example` to `.env` and fill it in (never commit `.env`).
 5. Project settings -> Service accounts -> Generate new private key. Base64 it into `FIREBASE_SERVICE_ACCOUNT_B64`:
    `base64 -i key.json | tr -d '\n'`
 
-**Groq**: create a key at console.groq.com and set `GROQ_API_KEY`.
+**Claude**: create a key at console.anthropic.com and set `ANTHROPIC_API_KEY`. Regular searches use Sonnet 5.5, a Deep Search uses Opus 5.5, and Haiku 5.5 writes the headline and summary (`CLAUDE_MODEL`, `CLAUDE_DEEP_MODEL`, `CLAUDE_SUMMARY_MODEL` change them). With `FARE_PROVIDER=serpapi`, Claude also chooses which day combinations to price, inside the same SerpApi search budget.
 
 **Fares**: set `FARE_PROVIDER` to one of:
-- `serpapi` (recommended): live Google Flights prices with real flight times, airlines and layovers. Sign up free at serpapi.com, copy your API key into `SERPAPI_KEY`. The free plan is about 100 searches a month and each search is one credit, so each flexfare search prices only the few day combinations that fit best: 3 for a regular search (+1 if there is a nearby airport such as Porto for Lisbon) and 5 for a Deep Search. Results are cached for a day and shared between users, and `SERPAPI_MONTHLY_LIMIT` (default 100) stops flexfare from ever going past your plan. The "from $X" week bars are not available with this source.
+- `serpapi` (recommended): live Google Flights prices with real flight times, airlines and layovers. Sign up free at serpapi.com, copy your API key into `SERPAPI_KEY`. The free plan is about 100 searches a month and each search is one credit, so each flexfare search prices only a few day combinations (Claude picks the ones worth pricing; without an Anthropic key a fixed rule picks them): 3 for a regular search (+1 if there is a nearby airport such as Porto for Lisbon) and 5 for a Deep Search. Results are cached for a day and shared between users, and `SERPAPI_MONTHLY_LIMIT` (default 100) stops flexfare from ever going past your plan. The "from $X" week bars are not available with this source.
 - `travelpayouts`: free, but it only remembers prices from recent searches on Aviasales, so many routes and weeks come back empty. Needs `TRAVELPAYOUTS_TOKEN` (the marker is optional and only credits bookings to you).
 - `simulated` (default): fake fares labelled "Sample data", for development.
 

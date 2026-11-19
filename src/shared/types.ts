@@ -19,7 +19,13 @@ export interface Week {
   label: string; // "Oct 19 – 25"
 }
 
-export type StayPreference = 'cheapest' | 'range' | 'about-two-weeks' | 'exact';
+/** one-night = 1 night, short = 3 to 4 nights, range = 10 to 16, custom = SearchQuery.customStay. */
+export type StayPreference = 'cheapest' | 'one-night' | 'short' | 'range' | 'about-two-weeks' | 'custom' | 'exact';
+/** An inclusive range of nights. */
+export interface NightsRange {
+  min: number;
+  max: number;
+}
 export type Priority = 'price' | 'balance' | 'speed';
 /** Regular = small, cheap model. Deep = larger model, more options, closer look (1 per day). */
 export type Depth = 'regular' | 'deep';
@@ -53,6 +59,8 @@ export interface SearchQuery {
   travelers: number;
   cabin: 'economy' | 'premium' | 'business';
   stay: StayPreference;
+  /** Only read when stay is 'custom'. */
+  customStay?: NightsRange;
   priority: Priority;
   depth: Depth;
 }
@@ -118,6 +126,40 @@ export interface CuratedRoute {
   /** 'more' = shown under "More options", ranked by score and not written up by the AI. */
   tier?: 'pick' | 'more';
   priceFoundAt?: string; // ISO timestamp the fare was last seen
+  /** Present when a direct checkout can be looked up for this exact flight and these exact dates. */
+  book?: BookRef;
+}
+
+/**
+ * What the server needs to look up a direct checkout for one priced flight. `token` comes from the fare source
+ * and is opaque; `sig` is added by the server when it sends the route out, so a client can't aim our SerpApi key
+ * at tokens of its own.
+ */
+export interface BookRef {
+  /** 'departure': a round trip, so the return flight is chosen first (2 searches). 'booking': one search. */
+  kind: 'departure' | 'booking';
+  token: string;
+  /** The airports searched, exactly as they were sent to the fare source ("SFO,OAK,SJC"). */
+  dep: string;
+  arr: string;
+  out: string;
+  back: string | null;
+  cabin: 'economy' | 'premium' | 'business';
+  sig?: string;
+}
+
+/** One way to buy this flight, straight from the seller. `postData` is submitted as a form to `url`. */
+export interface BookChoice {
+  seller: string;
+  price: number;
+  url: string;
+  postData: string;
+}
+
+export interface BookLookup {
+  choices: BookChoice[];
+  /** Round trips: the return flight the prices above are for, e.g. "DL 198 HND to HNL 21:00, DL 359 HNL to SEA 14:07". */
+  returnFlight?: string;
 }
 
 export interface BookingOption {

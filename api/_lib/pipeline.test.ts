@@ -7,10 +7,19 @@ const q = (over: Partial<NormalizedQuery> = {}): NormalizedQuery => ({
   from: 'SFO', to: 'LIS', departWeek: parseIsoWeek('2026-W43')!, returnWeek: parseIsoWeek('2026-W45')!, travelers: 1, cabin: 'economy', ...over,
 });
 
-describe('runCuration (simulated fares, Groq unavailable)', () => {
+/** An Anthropic Messages API response carrying `body` as the model's text. */
+const reply = (body: unknown) =>
+  new Response(
+    JSON.stringify({ id: 'msg_1', type: 'message', role: 'assistant', model: 'm', content: [{ type: 'text', text: JSON.stringify(body) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } }),
+    { status: 200, headers: { 'content-type': 'application/json' } },
+  );
+const SUMMARY_MODEL = 'claude-haiku-5-5';
+const pickOf = (id: string, why = 'Fits.') => ({ candidateId: id, fit: 90, why, reasons: ['Fits.'], scores: { price: 90, travelTime: 80, connections: 70, weeksFit: 100 } });
+
+describe('runCuration (simulated fares, Claude unavailable)', () => {
   beforeEach(() => {
     process.env.FARE_PROVIDER = 'simulated';
-    delete process.env.GROQ_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());
@@ -34,27 +43,32 @@ describe('runCuration (simulated fares, Groq unavailable)', () => {
     expect(new Set(badges).size).toBe(badges.length);
   });
 
-  it('regular and deep searches send different models, prompts and numbers of candidates to Groq', async () => {
-    process.env.GROQ_API_KEY = 'k';
-    delete process.env.GROQ_MODEL;
-    delete process.env.GROQ_DEEP_MODEL;
+  it('regular and deep searches send different models, prompts and numbers of candidates to Claude', async () => {
+    process.env.ANTHROPIC_API_KEY = 'k';
+    delete process.env.CLAUDE_MODEL;
+    delete process.env.CLAUDE_DEEP_MODEL;
+    delete process.env.CLAUDE_SUMMARY_MODEL;
     const seen: { model: string; system: string; n: number; effort: string }[] = [];
+    let summaries = 0;
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
-      const cands = JSON.parse(body.messages[1].content).candidates as { id: string; priceUsd: number }[];
-      seen.push({ model: body.model, system: body.messages[0].content, n: cands.length, effort: body.reasoning_effort });
-      const c = cands[0];
-      const out = { headline: `Pick is $${c.priceUsd}.`, summary: 'Fine.', picks: [{ candidateId: c.id, fit: 90, why: `About $${c.priceUsd}.`, reasons: ['Fits.'], scores: { price: 90, travelTime: 80, connections: 70, weeksFit: 100 } }] };
-      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(out) } }] }), { status: 200 });
+      if (body.model === SUMMARY_MODEL) {
+        summaries++;
+        return reply({ headline: 'Fine.', summary: 'Fine.' });
+      }
+      const cands = JSON.parse(body.messages[0].content).candidates as { id: string; priceUsd: number }[];
+      seen.push({ model: body.model, system: body.system, n: cands.length, effort: body.output_config.effort });
+      return reply({ picks: [pickOf(cands[0].id, `About $${cands[0].priceUsd}.`)] });
     }));
     await runCuration(q(), { stay: 'range', priority: 'balance', depth: 'regular' });
     await runCuration(q(), { stay: 'range', priority: 'balance', depth: 'deep' });
     vi.unstubAllGlobals();
     const [regular, deep] = seen;
-    expect(regular).toMatchObject({ model: 'openai/gpt-oss-20b', n: 10, effort: 'low' });
-    expect(deep).toMatchObject({ model: 'openai/gpt-oss-120b', n: 12, effort: 'low' });
+    expect(regular).toMatchObject({ model: 'claude-sonnet-5-5', n: 10, effort: 'low' });
+    expect(deep).toMatchObject({ model: 'claude-opus-5-5', n: 12, effort: 'medium' });
     expect(regular.system).toContain('regular search');
     expect(deep.system).toContain('Deep Search');
+    expect(summaries).toBe(2); // Haiku writes the headline and summary for both
   });
 
   it('a search with no depth given is a regular one', async () => {
@@ -68,28 +82,41 @@ describe('runCuration (simulated fares, Groq unavailable)', () => {
     expect(r.routes.every((x) => x.backDate === null && x.inbound === null && x.nights === 0)).toBe(true);
   });
 
-  it('uses the AI answer when Groq responds validly', async () => {
-    process.env.GROQ_API_KEY = 'k';
+  it('uses the AI answer when Claude responds validly, with the summary written by Haiku', async () => {
+    process.env.ANTHROPIC_API_KEY = 'k';
     const seen: { ids: string[] } = { ids: [] };
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
-      const cands = JSON.parse(body.messages[1].content).candidates as { id: string; priceUsd: number }[];
+      if (body.model === SUMMARY_MODEL) {
+        const picked = JSON.parse(body.messages[0].content).picks[0] as { priceUsd: number };
+        return reply({ headline: `Top pick is $${picked.priceUsd}.`, summary: 'Checked many combinations.' });
+      }
+      const cands = JSON.parse(body.messages[0].content).candidates as { id: string; priceUsd: number }[];
       seen.ids = cands.map((c) => c.id);
-      const best = cands[0];
-      const out = {
-        headline: `Top pick is $${best.priceUsd}.`, summary: 'Checked many combinations.',
-        picks: [{ candidateId: best.id, fit: 93, why: `About $${best.priceUsd} per adult.`, reasons: ['Matches your weeks.'], scores: { price: 90, travelTime: 80, connections: 70, weeksFit: 100 } }],
-      };
-      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(out) } }] }), { status: 200 });
+      return reply({ picks: [{ ...pickOf(cands[0].id, `About $${cands[0].priceUsd} per adult.`), fit: 93 }] });
     }));
     const r = await runCuration(q(), { stay: 'range', priority: 'balance' });
     vi.unstubAllGlobals();
     expect(r.aiFallback).toBe(false);
-    const picks = r.routes.filter((x) => x.tier === 'pick');
-    expect(picks).toHaveLength(1); // the AI chose one
+    expect(r.routes.filter((x) => x.tier === 'pick')).toHaveLength(1); // the AI chose one
     expect(r.routes.length).toBeGreaterThan(1); // the rest follow as More options
     expect(r.routes[0].id).toBe(seen.ids[0]);
     expect(r.routes[0].fit).toBe(93);
     expect(r.headline).toContain('Top pick');
+  });
+
+  it("keeps Claude's picks and writes a plain summary when the summary step fails", async () => {
+    process.env.ANTHROPIC_API_KEY = 'k';
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      if (body.model === SUMMARY_MODEL) return new Response('{"error":{"message":"bad"}}', { status: 400 });
+      return reply({ picks: [pickOf((JSON.parse(body.messages[0].content).candidates as { id: string }[])[0].id)] });
+    }));
+    const r = await runCuration(q(), { stay: 'range', priority: 'balance' });
+    vi.unstubAllGlobals();
+    expect(r.aiFallback).toBe(false);
+    expect(r.routes.filter((x) => x.tier === 'pick')).toHaveLength(1);
+    expect(r.summary).not.toContain('unavailable');
+    expect(r.headline).toContain('Best match');
   });
 });

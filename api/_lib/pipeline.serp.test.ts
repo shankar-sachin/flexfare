@@ -37,7 +37,7 @@ const q: NormalizedQuery = { from: 'SFO', to: 'LIS', departWeek: parseIsoWeek('2
 
 describe('runCuration with a live-search provider', () => {
   beforeEach(() => {
-    delete process.env.GROQ_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());

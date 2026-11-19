@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { HORIZON_WEEKS, MAX_RETURN_GAP_WEEKS, formatIsoWeek, parseIsoWeek, upcomingWeeks, weeksBetween } from '../../src/shared/weeks.js';
-import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
+import type { Depth, NightsRange, Priority, StayPreference } from '../../src/shared/types.js';
+import { formatNights, parseNights, stayProblem } from '../../src/shared/stay.js';
 import { HttpError } from './http.js';
 import type { NormalizedQuery } from './providers/types.js';
 
@@ -11,7 +12,8 @@ export const curateBody = z.object({
   to: code,
   out: z.string(),
   back: z.string().nullish(),
-  stay: z.enum(['cheapest', 'range', 'about-two-weeks', 'exact']),
+  stay: z.enum(['cheapest', 'one-night', 'short', 'range', 'about-two-weeks', 'custom', 'exact']),
+  nights: z.string().nullish(), // "7-10", only for stay=custom
   prio: z.enum(['price', 'balance', 'speed']),
   pax: z.number().int().min(1).max(9),
   cabin: z.enum(['economy', 'premium', 'business']),
@@ -21,6 +23,7 @@ export const curateBody = z.object({
 export interface ValidQuery {
   query: NormalizedQuery;
   stay: StayPreference;
+  customStay: NightsRange | null;
   priority: Priority;
   depth: Depth;
   cacheKey: unknown;
@@ -44,13 +47,20 @@ export function validateCurate(body: unknown): ValidQuery {
     const gap = weeksBetween(departWeek, returnWeek);
     if (gap < 1 || gap > MAX_RETURN_GAP_WEEKS) throw bad(`Return 1 to ${MAX_RETURN_GAP_WEEKS} weeks after you leave.`);
   }
+  const customStay = b.stay === 'custom' ? parseNights(b.nights) : null;
+  if (b.stay === 'custom' && !customStay) throw bad('Enter a stay of 1 to 60 nights, for example 7 or 7-10.');
+  if (returnWeek) {
+    const problem = stayProblem(b.stay, customStay, weeksBetween(departWeek, returnWeek));
+    if (problem) throw bad(problem);
+  }
   return {
     query: { from: b.from, to: b.to, departWeek, returnWeek, travelers: b.pax, cabin: b.cabin },
     stay: b.stay,
+    customStay,
     priority: b.prio,
     depth: b.depth,
     // pax/cabin are in the key because the booking links embed them; depth because a deep search must
     // never be answered from a regular search's cache (it was paid for with the day's one deep search).
-    cacheKey: [b.from, b.to, formatIsoWeek(departWeek), returnWeek ? formatIsoWeek(returnWeek) : null, b.stay, b.prio, b.pax, b.cabin, b.depth, process.env.FARE_PROVIDER ?? 'simulated'],
+    cacheKey: [b.from, b.to, formatIsoWeek(departWeek), returnWeek ? formatIsoWeek(returnWeek) : null, b.stay, customStay ? formatNights(customStay) : null, b.prio, b.pax, b.cabin, b.depth, process.env.FARE_PROVIDER ?? 'simulated'],
   };
 }

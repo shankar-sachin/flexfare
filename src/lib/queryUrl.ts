@@ -1,12 +1,14 @@
 // SearchQuery <-> URL, so results are shareable and survive a reload:
 //   /results?trip=round&from=SFO&to=LIS&out=2026-W43&back=2026-W45&stay=range&prio=balance&pax=1&cabin=economy&depth=regular
+// stay=custom adds nights=7-10 (or nights=7).
 // `from`/`to` are IATA city codes. `back` is only for round trips. Multi-city adds leg2, leg3, leg4 as
 // FROM-TO-WEEK (for example leg2=LIS-PAR-2026-W45). Links without `trip` (older ones) are read as round trip
 // when they have `back` and one way when they don't.
 import { MAX_LEGS, type City, type Depth, type Priority, type SearchLeg, type SearchQuery, type StayPreference, type TripType } from '../shared/types';
+import { formatNights, parseNights, stayProblem } from '../shared/stay';
 import { MAX_RETURN_GAP_WEEKS, formatIsoWeek, parseIsoWeek, weeksBetween } from '../shared/weeks';
 
-const STAYS: StayPreference[] = ['cheapest', 'range', 'about-two-weeks', 'exact'];
+const STAYS: StayPreference[] = ['cheapest', 'one-night', 'short', 'range', 'about-two-weeks', 'custom', 'exact'];
 const PRIORITIES: Priority[] = ['price', 'balance', 'speed'];
 const CABINS: SearchQuery['cabin'][] = ['economy', 'premium', 'business'];
 const DEPTHS: Depth[] = ['regular', 'deep'];
@@ -26,6 +28,7 @@ export function toSearchParams(q: SearchQuery): URLSearchParams {
     depth: q.depth,
   });
   if (q.trip === 'round' && q.returnWeek) p.set('back', formatIsoWeek(q.returnWeek));
+  if (q.trip === 'round' && q.stay === 'custom' && q.customStay) p.set('nights', formatNights(q.customStay));
   if (q.trip === 'multi') q.extraLegs.forEach((l, i) => p.set(`leg${i + 2}`, `${l.from.code}-${l.to.code}-${formatIsoWeek(l.week)}`));
   return p;
 }
@@ -81,6 +84,9 @@ export function parseSearchParams(
   const travelers = Number(p.get('pax') ?? 1);
   if (!STAYS.includes(stay) || !PRIORITIES.includes(priority) || !CABINS.includes(cabin) || !DEPTHS.includes(depth)) return null;
   if (!Number.isInteger(travelers) || travelers < 1 || travelers > 9) return null;
+  const customStay = stay === 'custom' ? parseNights(p.get('nights')) : null;
+  if (stay === 'custom' && !customStay) return null;
+  if (returnWeek && stayProblem(stay, customStay, weeksBetween(departWeek, returnWeek))) return null;
 
-  return { trip, extraLegs, from, to, departWeek, returnWeek, travelers, cabin, stay, priority, depth };
+  return { trip, extraLegs, from, to, departWeek, returnWeek, travelers, cabin, stay, ...(customStay && { customStay }), priority, depth };
 }
