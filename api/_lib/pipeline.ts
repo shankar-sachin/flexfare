@@ -1,18 +1,21 @@
-// The curation pipeline: fares -> deterministic scoring -> Groq analysis -> CuratedRoute[].
+// The curation pipeline: fares (Claude scouts SerpApi when it can) -> deterministic scoring -> Claude analysis -> CuratedRoute[].
 // The LLM only chooses candidates and writes text. Every number shown comes from provider data.
 import type { CuratedRoute, CurationResult, DayFare, Leg, Week, WeekFare } from '../../src/shared/types.js';
 import { HORIZON_WEEKS, upcomingWeeks } from '../../src/shared/weeks.js';
 import { cacheGet, cacheSet } from './cache.js';
-import { askGroq, modelPlan, type AiPick } from './groq.js';
+import { signBookRef } from './bookRef.js';
+import { askClaude, claudeConfigured, modelPlan, type AiPick } from './claude.js';
+import { HttpError } from './http.js';
+import { scoutFares } from './searchAgent.js';
 import { carrierCode } from '../../src/shared/airlines.js';
 import { buildBookingOptions, type Carrier } from '../../src/shared/booking.js';
 import { nearbyFor } from '../../src/shared/nearby.js';
-import { buildUserMessage, systemPrompt } from './prompt.js';
+import { buildUserMessage, summaryPrompt, systemPrompt } from './prompt.js';
 import { getProvider } from './providers/index.js';
-import type { DayGridCell, NormalizedQuery } from './providers/types.js';
+import type { DayGridCell, NormalizedQuery, SearchResult } from './providers/types.js';
 import type { FareCandidate } from './providers/types.js';
 import { DEEP_TOP_N, TOP_N, fmtMinutes, scoreCandidates, type Scored } from './scoring.js';
-import type { Depth, Priority, StayPreference } from '../../src/shared/types.js';
+import type { Depth, NightsRange, Priority, StayPreference } from '../../src/shared/types.js';
 
 const stopsText = (n: number) => (n === 0 ? 'nonstop' : `${n} stop${n === 1 ? '' : 's'}`);
 const stopsLabel = (s: Scored) => {
@@ -101,16 +104,43 @@ export function carriersOf(c: FareCandidate): Carrier[] {
 const MORE_SHOWN = { regular: 10, deep: 15 } as const;
 const DISPLAY_POOL = { regular: 20, deep: 28 } as const;
 
+/**
+ * Live providers (SerpApi) let Claude choose which day combinations to price. If Claude is unavailable, or
+ * couldn't run a single search, the provider's fixed day-combination search runs instead. Once any search has
+ * been paid for we never start a second round.
+ */
+async function findFares(q: NormalizedQuery, prefs: { nearby: ReturnType<typeof nearbyFor>; priority: Priority }): Promise<SearchResult> {
+  const provider = getProvider();
+  if (provider.startLive && claudeConfigured()) {
+    try {
+      const live = await provider.startLive(q);
+      await scoutFares(
+        live,
+        {
+          from: q.from, to: q.to, departWeek: q.departWeek, returnWeek: q.returnWeek, stay: q.stay ?? 'cheapest', customStay: q.customStay,
+          priority: prefs.priority, budget: live.budget, deep: q.depth === 'deep', nearby: prefs.nearby,
+        },
+        modelPlan(q.depth ?? 'regular'),
+      );
+      const found = await live.result();
+      if (found.candidates.length > 0 || live.searchesStarted() > 0) return found;
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      console.error('[pipeline] Claude-led search failed, using the fixed search', err instanceof Error ? err.message : err);
+    }
+  }
+  return provider.searchWeeks(q);
+}
+
 export async function runCuration(
   q: NormalizedQuery,
-  prefs: { stay: StayPreference; priority: Priority; depth?: Depth },
+  prefs: { stay: StayPreference; customStay?: NightsRange | null; priority: Priority; depth?: Depth },
 ): Promise<CurationResult> {
-  const provider = getProvider();
   const depth = prefs.depth ?? 'regular';
-  const found = await provider.searchWeeks({ ...q, stay: prefs.stay, depth });
+  const found = await findFares({ ...q, stay: prefs.stay, customStay: prefs.customStay, depth }, { nearby: nearbyFor(q.to), priority: prefs.priority });
   const hasReturn = q.returnWeek !== null;
-  // Score a wider pool for display; the AI analyses only the best few (Groq's free tier is small).
-  const all = scoreCandidates(found.candidates, { priority: prefs.priority, stay: prefs.stay, hasReturn }, DISPLAY_POOL[depth]);
+  // Score a wider pool for display; the AI analyses only the best few (keeps the prompt small).
+  const all = scoreCandidates(found.candidates, { priority: prefs.priority, stay: prefs.stay, customStay: prefs.customStay, hasReturn }, DISPLAY_POOL[depth]);
   const scored = all.slice(0, depth === 'deep' ? DEEP_TOP_N : TOP_N);
 
   const empty = (note: string): CurationResult => ({
@@ -124,17 +154,19 @@ export async function runCuration(
   });
   if (all.length === 0) return empty('Fares for this route are not in our data for those weeks. Check Google Flights or Skyscanner for live prices.');
 
-  const ai = await askGroq(
+  const promptInput = {
+    from: q.from, to: q.to, priority: prefs.priority, stay: prefs.stay, customStay: prefs.customStay, hasReturn,
+    pairsChecked: found.pairsChecked, nearby: nearbyFor(q.to), candidates: scored,
+  };
+  const byId = new Map(all.map((s) => [s.c.id, s]));
+  const ai = await askClaude(
     systemPrompt(depth),
-    buildUserMessage({
-      from: q.from, to: q.to, priority: prefs.priority, stay: prefs.stay, hasReturn,
-      pairsChecked: found.pairsChecked, nearby: nearbyFor(q.to), candidates: scored,
-    }),
+    buildUserMessage(promptInput),
     scored,
     modelPlan(depth),
+    (chosen) => summaryPrompt({ ...promptInput, picks: chosen.map((pick) => ({ pick, s: byId.get(pick.candidateId)! })) }),
   );
   const picks = ai?.picks ?? fallbackPicks(scored);
-  const byId = new Map(all.map((s) => [s.c.id, s]));
 
   const toRoute = (p: AiPick, badge: CuratedRoute['badge'], warning: string | undefined, tier: 'pick' | 'more'): CuratedRoute => {
     const s = byId.get(p.candidateId)!;
@@ -176,6 +208,7 @@ export async function runCuration(
         aviasalesUrl: c.aviasalesPath ? `https://www.aviasales.com${c.aviasalesPath}${process.env.TRAVELPAYOUTS_MARKER ? `${c.aviasalesPath.includes('?') ? '&' : '?'}marker=${encodeURIComponent(process.env.TRAVELPAYOUTS_MARKER)}` : ''}` : undefined,
       }),
       priceFoundAt: c.foundAt,
+      ...(c.book && { book: signBookRef(c.book) }),
       tier,
     };
   };
@@ -199,7 +232,9 @@ export async function runCuration(
     headline: ai?.headline ?? `Best match: ${routes[0].fromAirport} to ${routes[0].toAirport}, ${routes[0].via}, $${routes[0].price} per adult.`,
     summary:
       ai?.summary ??
-      `We checked ${found.pairsChecked} date combinations. The AI summary is unavailable right now, so these are ranked by a score that weighs price, travel time, layovers and stay length.`,
+      (ai
+        ? `We checked ${found.pairsChecked} date combinations and ranked them by price, travel time, layovers and stay length.`
+        : `We checked ${found.pairsChecked} date combinations. The AI summary is unavailable right now, so these are ranked by a score that weighs price, travel time, layovers and stay length.`),
     combosChecked: found.pairsChecked,
     aiFallback: !ai,
     sample: found.sample,

@@ -26,7 +26,7 @@ export const POST = handle(async (req) => {
 
   let result: CurationResult;
   try {
-    result = await runCuration(v.query, { stay: v.stay, priority: v.priority, depth: v.depth });
+    result = await runCuration(v.query, { stay: v.stay, customStay: v.customStay, priority: v.priority, depth: v.depth });
     if (result.routes.length > 0) {
       result.weekFares = await getWeekFares(v.query.from, v.query.to).catch(() => []);
     }

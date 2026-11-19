@@ -8,7 +8,7 @@ const q: NormalizedQuery = { from: 'SFO', to: 'LIS', departWeek: parseIsoWeek('2
 describe('more flight options', () => {
   beforeEach(() => {
     process.env.FARE_PROVIDER = 'simulated';
-    delete process.env.GROQ_API_KEY; // no AI: picks come from the score ranking
+    delete process.env.ANTHROPIC_API_KEY; // no AI: picks come from the score ranking
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());

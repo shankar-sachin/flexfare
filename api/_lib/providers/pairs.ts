@@ -1,6 +1,6 @@
 // Google Flights can only price one day combination per search, and every search costs a credit.
 // So instead of all 49 (out day x back day), pick the few that fit the traveler best.
-import type { StayPreference, Week } from '../../../src/shared/types.js';
+import type { NightsRange, StayPreference, Week } from '../../../src/shared/types.js';
 import { addDays, weeksBetween } from '../../../src/shared/weeks.js';
 import { stayScore } from '../scoring.js';
 
@@ -14,7 +14,7 @@ const PRIOR = [0.5, 1, 1, 0.6, 0.2, 0.7, 0.3];
 /** Penalty for reusing a day we already picked, so the searches cover different days. */
 const REUSE = 0.35;
 
-export function pickPairs(departWeek: Week, returnWeek: Week | null, stay: StayPreference, n: number): DatePair[] {
+export function pickPairs(departWeek: Week, returnWeek: Week | null, stay: StayPreference, n: number, custom?: NightsRange | null): DatePair[] {
   if (!returnWeek) {
     return [...PRIOR.keys()]
       .sort((a, b) => PRIOR[b] - PRIOR[a])
@@ -23,7 +23,7 @@ export function pickPairs(departWeek: Week, returnWeek: Week | null, stay: StayP
   }
   const gap = weeksBetween(departWeek, returnWeek) * 7;
   const all = [...PRIOR.keys()].flatMap((o) =>
-    [...PRIOR.keys()].map((b) => ({ o, b, base: stayScore(stay, gap + b - o) / 100 + 0.6 * ((PRIOR[o] + PRIOR[b]) / 2) })),
+    [...PRIOR.keys()].map((b) => ({ o, b, base: stayScore(stay, gap + b - o, custom) / 100 + 0.6 * ((PRIOR[o] + PRIOR[b]) / 2) })),
   );
   const chosen: { o: number; b: number }[] = [];
   while (chosen.length < Math.min(n, all.length)) {

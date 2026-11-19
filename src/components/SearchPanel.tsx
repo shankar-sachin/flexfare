@@ -3,19 +3,14 @@ import { ChipGroup } from './ChipGroup';
 import { CityField } from './CityField';
 import { Calendar, Swap } from './Icons';
 import { LegRows } from './LegRows';
+import { StayField } from './StayField';
 import { TravelersField } from './TravelersField';
 import { TripTabs } from './TripTabs';
 import { WeekCalendar } from './WeekCalendar';
-import type { Priority, SearchQuery, StayPreference, Week, WeekFare } from '../shared/types';
+import type { Priority, SearchQuery, Week, WeekFare } from '../shared/types';
 import { switchTrip } from '../lib/legs';
 import { weeksBetween } from '../shared/weeks';
 
-const STAYS: { value: StayPreference; label: string }[] = [
-  { value: 'cheapest', label: 'Whatever’s cheapest' },
-  { value: 'range', label: '10 – 16 nights' },
-  { value: 'about-two-weeks', label: 'About 2 weeks' },
-  { value: 'exact', label: 'Exactly as picked' },
-];
 const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 'price', label: 'Lowest price' },
   { value: 'balance', label: 'Best balance' },
@@ -110,7 +105,7 @@ export function SearchPanel({ query, weeks, fares, faresLoading, onChange, foote
 
       <div className="row" style={{ gap: 40, alignItems: 'flex-start' }}>
         {query.trip === 'round' && (
-          <ChipGroup label="How long do you want to stay?" options={STAYS} value={query.stay} disabled={readOnly} onChange={(stay) => onChange?.({ stay })} />
+          <StayField query={query} disabled={readOnly} onChange={onChange} />
         )}
         <ChipGroup label="What matters most?" options={PRIORITIES} value={query.priority} disabled={readOnly} onChange={(priority) => onChange?.({ priority })} />
       </div>

@@ -6,7 +6,7 @@
 | API | Vercel serverless functions in `api/` (Web `Request`/`Response`) |
 | Auth | Firebase Auth in the browser, `firebase-admin` on the server |
 | Data | Firestore, server only (rules deny every client) |
-| AI | Groq: `gpt-oss-20b` (regular), `gpt-oss-120b` (deep) |
+| AI | Claude: Sonnet 5.5 (regular), Opus 5.5 (deep), Haiku 5.5 (headline and summary) |
 | Fares | SerpApi (Google Flights data), Travelpayouts, or a simulated provider |
 | Email | Brevo transactional email for the 6-digit verification code |
 | Tests | Vitest, Testing Library, jsdom |
@@ -15,7 +15,7 @@
 
 ```
 api/                 curate, week-fares, me, add-phone, email-code/*
-  _lib/              auth, quota, cache, scoring, prompt, groq, pipeline, providers/
+  _lib/              auth, quota, cache, scoring, prompt, claude, searchAgent, pipeline, providers/
 src/shared/          code used by both sides: types, weeks, booking links, metro airports
 src/lib/             auth context, API client, URL state, calendar and city search
 src/components/      search form, calendar, results, booking panel, home sections

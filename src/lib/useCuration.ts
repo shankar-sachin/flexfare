@@ -29,7 +29,7 @@ export function useCuration(query: SearchQuery | null, opts: { demo?: boolean } 
     };
     // The query object is rebuilt on every parse; its URL form is the stable identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [demo, query && JSON.stringify([query.from.code, query.to.code, query.departWeek.start, query.returnWeek?.start, query.stay, query.priority, query.travelers, query.cabin])]);
+  }, [demo, query && JSON.stringify([query.from.code, query.to.code, query.departWeek.start, query.returnWeek?.start, query.stay, query.customStay?.min, query.customStay?.max, query.priority, query.travelers, query.cabin])]);
 
   const result = demo ? demoData : data;
   return { data: result, error: demo ? null : error, loading: !!query && !result && !error };

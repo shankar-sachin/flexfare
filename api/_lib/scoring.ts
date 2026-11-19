@@ -1,11 +1,14 @@
 // Deterministic scoring that runs BEFORE the LLM. It ranks candidates and precomputes every
 // comparison ("$123 cheaper than the nonstop") so the model never has to do arithmetic.
-import type { Priority, StayPreference } from '../../src/shared/types.js';
+import type { NightsRange, Priority, StayPreference } from '../../src/shared/types.js';
+import { stayScore } from '../../src/shared/stay.js';
 import type { FareCandidate } from './providers/types.js';
 
 export interface QueryPrefs {
   priority: Priority;
   stay: StayPreference;
+  /** Only read when stay is 'custom'. */
+  customStay?: NightsRange | null;
   hasReturn: boolean;
 }
 
@@ -32,19 +35,13 @@ const WEIGHTS: Record<Priority, { p: number; t: number; c: number; s: number }> 
 };
 const CONN = [100, 85, 65, 45];
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-export const TOP_N = 10; // fewer candidates = smaller prompt (Groq's free tier allows ~8k tokens/minute)
+export const TOP_N = 10; // fewer candidates = smaller prompt, lower cost
 export const DEEP_TOP_N = 12; // a Deep Search looks at a few more
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
 
-export function stayScore(stay: StayPreference, nights: number): number {
-  switch (stay) {
-    case 'range': return nights >= 10 && nights <= 16 ? 100 : clamp(100 - 8 * (nights < 10 ? 10 - nights : nights - 16));
-    case 'about-two-weeks': return clamp(100 - 7 * Math.abs(nights - 14));
-    default: return 100; // 'cheapest' ignores stay; 'exact' is always inside the picked weeks
-  }
-}
+export { stayScore };
 
 export function dedupe(cands: FareCandidate[]): FareCandidate[] {
   const best = new Map<string, FareCandidate>();
@@ -79,7 +76,7 @@ export function scoreCandidates(input: FareCandidate[], prefs: QueryPrefs, topN 
       price: clamp((100 * minPrice) / c.price),
       time: clamp((100 * minMinutes) / m),
       conn: clamp(connBase - (c.isNearby ? 10 : 0)),
-      stay: prefs.hasReturn ? stayScore(prefs.stay, nights) : 100,
+      stay: prefs.hasReturn ? stayScore(prefs.stay, nights, prefs.customStay) : 100,
     };
     return {
       c,
