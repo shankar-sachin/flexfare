@@ -1,5 +1,5 @@
 // The single seam between the UI and the backend (Vercel functions in /api).
-import type { BookLookup, BookRef, CurationResult, QuotaSummary, SearchQuery, WeekFare } from '../shared/types';
+import type { AdminStats, BookLookup, BookRef, CurationResult, QuotaSummary, SearchQuery, WeekFare } from '../shared/types';
 import { useSyncExternalStore } from 'react';
 import { auth } from './firebase';
 import { toSearchParams } from './queryUrl';
@@ -81,6 +81,7 @@ export interface Me extends QuotaSummary {
   recent: RecentSearch[];
 }
 export const getMe = () => authedFetch<Me>('/api/me').then((m) => (setQuota(m), m));
+export const getAdminStats = () => authedFetch<AdminStats>('/api/admin');
 export const deleteAccount = () => authedFetch<{ ok: true }>('/api/me', { method: 'DELETE' });
 export const addPhone = (phone: string) => authedFetch<{ ok: true }>('/api/add-phone', { method: 'POST', body: JSON.stringify({ phone }) });
 

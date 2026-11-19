@@ -10,6 +10,7 @@ function QuotaPill() {
     if (!quota) getMe().catch(() => undefined);
   }, [quota]);
   if (!quota) return null;
+  if (quota.unlimited) return <span className="tag" title="Admin account">Unlimited searches</span>;
   const regular = Math.max(0, quota.regular.limit - quota.regular.used);
   const deep = Math.max(0, quota.deep.limit - quota.deep.used);
   return (
@@ -22,6 +23,7 @@ function QuotaPill() {
 export function Header({ children, showHowItWorks = false }: { children?: ReactNode; showHowItWorks?: boolean }) {
   const { user, loading, emailVerified, phoneOnFile, signOut } = useAuth();
   const ready = !!user && emailVerified && phoneOnFile;
+  const quota = useQuota();
   return (
     <header className="site-header">
       <div className="container site-header__bar">
@@ -45,6 +47,7 @@ export function Header({ children, showHowItWorks = false }: { children?: ReactN
           {!loading && user && (
             <>
               {ready && <QuotaPill />}
+              {ready && quota?.admin && <Link to="/admin">Admin</Link>}
               {ready && <Link to="/account">Account</Link>}
               <button type="button" className="linklike" onClick={() => void signOut()}>Sign out</button>
             </>

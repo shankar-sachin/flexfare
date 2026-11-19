@@ -1,4 +1,5 @@
 import { isDisposableEmail } from '../../src/shared/disposable.js';
+import { isAdminEmail } from './admin.js';
 import { adminAuth } from './firestore.js';
 import { HttpError } from './http.js';
 
@@ -7,6 +8,8 @@ export interface AuthedUser {
   email: string;
   phoneOnFile: boolean;
   emailVerified: boolean;
+  /** On the ADMIN_EMAILS list with a verified email. */
+  isAdmin: boolean;
 }
 
 interface Options {
@@ -38,5 +41,5 @@ export async function requireUser(req: Request, opts: Options = {}): Promise<Aut
   const emailVerified = decoded.email_verified === true;
   if (!opts.allowNoPhone && !phoneOnFile) throw new HttpError(403, 'PHONE_REQUIRED', 'Add a phone number to continue.');
   if (!opts.allowUnverifiedEmail && !emailVerified) throw new HttpError(403, 'EMAIL_UNVERIFIED', 'Verify your email to continue.');
-  return { uid: decoded.uid, email: decoded.email ?? '', phoneOnFile, emailVerified };
+  return { uid: decoded.uid, email: decoded.email ?? '', phoneOnFile, emailVerified, isAdmin: isAdminEmail(decoded.email, emailVerified) };
 }
