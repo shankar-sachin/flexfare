@@ -9,6 +9,7 @@ import { AuthPage } from './pages/AuthPage';
 import { FinishEmailLinkPage } from './pages/FinishEmailLinkPage';
 import { LandingPage } from './pages/LandingPage';
 import { ResultsPage } from './pages/ResultsPage';
+import { AdminPage } from './pages/AdminPage';
 import { RoutePage } from './pages/RoutePage';
 import { SearchPage } from './pages/SearchPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="/results" element={<Gate><ResultsPage /></Gate>} />
             <Route path="/route/:id" element={<Gate><RoutePage /></Gate>} />
             <Route path="/account" element={<Gate><AccountPage /></Gate>} />
+            <Route path="/admin" element={<Gate><AdminPage /></Gate>} />
           </Routes>
         </BrowserRouter>
       </SearchProvider>

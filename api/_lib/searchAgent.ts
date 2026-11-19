@@ -36,7 +36,7 @@ export async function scoutFares(live: LiveSearch, input: SearchPromptInput, pla
       console.error(`[claude] scout turn ${turn + 1} (${plan.primary}) failed: ${err instanceof Error ? err.message : String(err)}`);
       break;
     }
-    logUsage('scout', plan.primary, res.usage);
+    await logUsage('scout', plan.primary, res.usage);
     if (res.stop_reason === 'refusal' || res.stop_reason === 'max_tokens') break;
     // Echo the whole assistant turn back unchanged (thinking blocks included) so the conversation stays valid.
     messages.push({ role: 'assistant', content: res.content });

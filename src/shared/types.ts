@@ -34,6 +34,34 @@ export interface QuotaSummary {
   regular: { used: number; limit: number };
   deep: { used: number; limit: number };
   resetsAt?: string;
+  /** Admin accounts: no daily limits (the limits above are then UNLIMITED_SEARCHES). */
+  unlimited?: boolean;
+  /** True for an admin account, so the app can show the admin page link. */
+  admin?: boolean;
+}
+
+/** Stands in for "no limit" in a QuotaSummary; anything at or above it is shown as Unlimited. */
+export const UNLIMITED_SEARCHES = 1_000_000;
+
+export interface AdminDay {
+  day: string; // YYYY-MM-DD (UTC)
+  /** Searches counted against the global daily cap (admin searches are not counted). */
+  searches: number;
+  claudeCalls: number;
+  tokensIn: number;
+  tokensOut: number;
+  /** Estimated from list prices; null when a model's price is unknown. */
+  costUsd: number | null;
+  models: { model: string; calls: number; tokensIn: number; tokensOut: number; costUsd: number | null }[];
+}
+
+export interface AdminStats {
+  generatedAt: string;
+  serpapi: { month: string; used: number; limit: number };
+  limits: { regular: number; deep: number; ip: number; global: number; bookPerUser: number };
+  /** Newest first, today included. */
+  days: AdminDay[];
+  config: { fareProvider: string; claudeModel: string; claudeDeepModel: string; claudeSummaryModel: string; claudeConfigured: boolean; admins: number };
 }
 
 /** round = out and back; oneway = just the outbound; multi = 2 to 4 separate flights (see extraLegs). */

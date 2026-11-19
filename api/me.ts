@@ -1,3 +1,4 @@
+import { unlimitedQuota } from './_lib/admin.js';
 import { requireUser } from './_lib/auth.js';
 import { adminAuth, db } from './_lib/firestore.js';
 import { handle, json } from './_lib/http.js';
@@ -5,7 +6,7 @@ import { peekQuota } from './_lib/quota.js';
 
 export const GET = handle(async (req) => {
   const user = await requireUser(req);
-  const quota = await peekQuota(user.uid);
+  const quota = user.isAdmin ? unlimitedQuota(await peekQuota(user.uid)) : await peekQuota(user.uid);
   const snap = await db().collection('searches').doc(user.uid).collection('items').orderBy('createdAt', 'desc').limit(10).get();
   const recent = snap.docs.map((d) => {
     const x = d.data();

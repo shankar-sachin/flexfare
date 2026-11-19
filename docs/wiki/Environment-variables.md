@@ -15,5 +15,6 @@ Copy `.env.example` to `.env`. Never commit `.env`, and never put a secret in a 
 | `PHONE_HASH_SECRET`, `DAILY_SALT`, `EMAIL_CODE_SECRET` | Hashing phones, IPs and codes | any long random string |
 | `BOOK_DAILY_LIMIT` | Direct checkout lookups per user per day (each costs 1 to 2 SerpApi credits) | default 6 |
 | `BOOKING_SECRET` | Signs the checkout lookup reference sent with each route | any long random string; falls back to `DAILY_SALT` |
+| `ADMIN_EMAILS` | Admin accounts: no daily limits, plus the `/admin` page (SerpApi credits, searches, Claude tokens and estimated cost) | comma-separated emails. Only a verified email counts. Set it in Vercel, not in git |
 
 The daily limits can be changed with `DAILY_REGULAR_LIMIT`, `DAILY_DEEP_LIMIT`, `IP_DAILY_LIMIT` and `GLOBAL_DAILY_LIMIT`.

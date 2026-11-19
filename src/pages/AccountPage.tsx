@@ -42,11 +42,15 @@ export function AccountPage() {
             <section className="card stack" style={{ gap: 8 }}>
               <span className="label">Signed in as</span>
               <strong style={{ fontSize: 18 }}>{user?.displayName ? `${user.displayName} · ${me.email}` : me.email}</strong>
+              {me.unlimited ? (
+                <p className="muted">Admin account: unlimited searches. <Link to="/admin">Open the admin page</Link>.</p>
+              ) : (
               <p className="muted">
                 Today: {Math.max(0, me.regular.limit - me.regular.used)} of {me.regular.limit} regular searches and{' '}
                 {Math.max(0, me.deep.limit - me.deep.used)} of {me.deep.limit} deep {me.deep.limit === 1 ? 'search' : 'searches'} left. They reset at{' '}
                 {me.resetsAt ? new Date(me.resetsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '00:00 UTC'} your time.
               </p>
+              )}
             </section>
 
             <section className="card stack" style={{ gap: 12 }} aria-labelledby="recent-h">

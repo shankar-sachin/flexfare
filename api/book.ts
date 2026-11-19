@@ -10,11 +10,11 @@ export const POST = handle(async (req) => {
   const body = (await req.json().catch(() => null)) as { book?: unknown } | null;
   const ref = verifyBookRef(body?.book);
   if (!ref) throw new HttpError(400, 'BAD_REQUEST', 'That booking link is not valid. Search again.');
-  await consumeBook(user.uid);
+  if (!user.isAdmin) await consumeBook(user.uid);
   try {
     return json(200, await lookupCheckout(ref));
   } catch (err) {
-    await refundBook(user.uid);
+    if (!user.isAdmin) await refundBook(user.uid);
     throw err;
   }
 });

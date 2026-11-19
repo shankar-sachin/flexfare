@@ -5,6 +5,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import type { Depth } from '../../src/shared/types.js';
+import { recordClaudeUsage } from './claudeUsage.js';
 import type { Scored } from './scoring.js';
 
 const score = z.number().min(0).max(100);
@@ -210,8 +211,10 @@ let shared: Anthropic | undefined;
 export const getClient = (): Anthropic => (shared ??= new Anthropic({ maxRetries: 0, timeout: 60_000, fetch: (input, init) => fetch(input, init) }));
 
 /** One line per call with the real token counts, so what a search costs can be read from the logs. */
-export function logUsage(label: string, model: string, usage: { input_tokens?: number; output_tokens?: number } | undefined) {
-  if (usage) console.info(`[claude] ${label} ${model} in=${usage.input_tokens ?? 0} out=${usage.output_tokens ?? 0}`);
+export async function logUsage(label: string, model: string, usage: { input_tokens?: number; output_tokens?: number } | undefined): Promise<void> {
+  if (!usage) return;
+  console.info(`[claude] ${label} ${model} in=${usage.input_tokens ?? 0} out=${usage.output_tokens ?? 0}`);
+  await recordClaudeUsage(model, usage); // daily per-model counters for the admin page
 }
 
 export interface ClaudeDeps {
@@ -236,7 +239,7 @@ async function callJson(client: Pick<Anthropic, 'messages'>, o: { model: string;
     }
     throw new Unavailable(err instanceof Error ? err.message : String(err)); // timeouts, dropped connections
   }
-  logUsage('answer', o.model, res.usage);
+  await logUsage('answer', o.model, res.usage);
   if (res.stop_reason === 'refusal') throw new Unavailable('Claude declined the request');
   if (res.stop_reason === 'max_tokens') throw new AnswerError('The answer was cut off. Keep it shorter and return complete JSON.');
   const text = res.content.find((b): b is Anthropic.TextBlock => b.type === 'text')?.text;

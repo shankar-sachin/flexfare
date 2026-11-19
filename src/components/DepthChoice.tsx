@@ -29,7 +29,7 @@ export function DepthChoice({ value, onChange, quota }: Props) {
           >
             <span className="depth__label">{o.label}</span>
             <span className="depth__note">{empty ? 'Used up today' : o.note}</span>
-            <span className="depth__left mono">{n === null ? '' : `${n} left today`}</span>
+            <span className="depth__left mono">{n === null ? '' : quota?.unlimited ? 'unlimited' : `${n} left today`}</span>
           </button>
         );
       })}

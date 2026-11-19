@@ -71,7 +71,9 @@ export function SearchPage() {
               <span className="muted" style={{ fontSize: 14, textAlign: 'right' }} aria-live="polite">
                 {problem
                   ? problem
-                  : leftNow === null
+                  : quota?.unlimited
+                    ? 'Unlimited searches (admin).'
+                    : leftNow === null
                     ? ' '
                     : short
                       ? leftNow === 0
